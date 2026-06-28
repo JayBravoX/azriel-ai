@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azriel — Private AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f1210;--surface:#141a15;--panel:#1a221b;--border:#263028;
+    --accent:#7aab82;--accent-dim:#4d7a55;--accent-glow:rgba(122,171,130,0.10);
+    --text:#dce8dd;--muted:#637a66;--danger:#c47a7a;--success:#7aab82;
+    --user-bubble:#1e2e20;--ai-bubble:#161e17;
+    --sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--radius:10px;
+  }
+  [data-theme="forest"]{--bg:#0a0f0a;--surface:#0f160f;--panel:#141e14;--border:#1e2e1e;--accent:#5a9e6a;--accent-dim:#3a6e4a;--text:#d0e8d4;--muted:#4a6a4e;--user-bubble:#182018;--ai-bubble:#111811}
+  [data-theme="slate"]{--bg:#0d1117;--surface:#131920;--panel:#1a2230;--border:#22304a;--accent:#7a9aba;--accent-dim:#4d6e8a;--text:#dce4f0;--muted:#5a6e88;--user-bubble:#1a2535;--ai-bubble:#131c28}
+  [data-theme="charcoal"]{--bg:#111111;--surface:#181818;--panel:#202020;--border:#2e2e2e;--accent:#a89a7a;--accent-dim:#786a4a;--text:#e8e0d0;--muted:#6a6060;--user-bubble:#252018;--ai-bubble:#1a1a1a}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;overflow:hidden;transition:background 0.3s,color 0.3s}
+  .shell{display:grid;grid-template-columns:230px 1fr;height:100vh;overflow:hidden}
+
+  /* SIDEBAR */
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .logo-area{padding:22px 18px 16px;border-bottom:1px solid var(--border)}
+  .logo{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent);letter-spacing:0.04em}
+  .logo-sub{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;font-family:var(--mono)}
+  .sidebar-btns{padding:12px 12px 4px;display:flex;flex-direction:column;gap:6px}
+  .new-chat-btn{background:var(--accent-glow);border:1px solid var(--accent-dim);border-radius:var(--radius);color:var(--accent);font-family:var(--sans);font-size:13px;font-weight:500;padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.15s,border-color 0.15s;width:100%}
+  .new-chat-btn:hover{background:rgba(122,171,130,0.18);border-color:var(--accent)}
+  .code-test-btn{background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);font-family:var(--mono);font-size:12px;padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.15s,border-color 0.15s,color 0.15s;width:100%}
+  .code-test-btn:hover{background:var(--panel);border-color:var(--accent);color:var(--accent)}
+  .code-test-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+  .history-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;padding:12px 16px 6px}
+  .history-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+  .history-list::-webkit-scrollbar{width:3px}
+  .history-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .history-item{padding:8px 10px;border-radius:7px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:background 0.1s,color 0.1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+  .history-item:hover{background:var(--panel);color:var(--text)}
+  .history-item.active{background:var(--panel);color:var(--accent)}
+  .sidebar-footer{padding:12px;border-top:1px solid var(--border)}
+  .settings-btn{background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:12.5px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:border-color 0.15s,color 0.15s;width:100%}
+  .settings-btn:hover{border-color:var(--accent);color:var(--text)}
+
+  /* MAIN VIEWS */
+  .main{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .view{display:none;flex-direction:column;height:100%;overflow:hidden}
+  .view.active{display:flex}
+
+  /* CHAT VIEW */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;background:var(--surface)}
+  .chat-title{font-size:13.5px;font-weight:500;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .icon-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;padding:6px 10px;display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);transition:border-color 0.15s,color 0.15s;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .system-prompt-area{background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden;max-height:0;transition:max-height 0.25s ease,padding 0.25s ease;flex-shrink:0}
+  .system-prompt-area.open{max-height:160px;padding:14px 22px}
+  .system-prompt-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px}
+  .system-prompt-input{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:13px;padding:10px 12px;resize:none;outline:none;height:88px;line-height:1.5;transition:border-color 0.15s}
+  .system-prompt-input:focus{border-color:var(--accent)}
+  .system-prompt-input::placeholder{color:var(--muted)}
+  .messages{flex:1;overflow-y:auto;padding:24px 0 12px;scroll-behavior:smooth}
+  .messages::-webkit-scrollbar{width:4px}
+  .messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .message-wrapper{padding:0 20px;max-width:800px;margin:0 auto 16px;width:100%;animation:fadeUp 0.18s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+  .bubble-row{display:flex;gap:10px;align-items:flex-end}
+  .bubble-row.user{flex-direction:row-reverse}
+  .avatar{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:600;font-family:var(--mono);letter-spacing:0.03em}
+  .avatar.user{background:var(--accent-dim);color:var(--bg)}
+  .avatar.ai{background:var(--panel);border:1px solid var(--border);color:var(--accent)}
+  .bubble{max-width:78%;padding:11px 15px;border-radius:14px;font-size:14.5px;line-height:1.72;word-break:break-word}
+  .bubble.user{background:var(--user-bubble);border:1px solid var(--border);border-bottom-right-radius:4px;color:var(--text)}
+  .bubble.ai{background:var(--ai-bubble);border:1px solid var(--border);border-bottom-left-radius:4px;color:var(--text)}
+  .bubble-meta{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px}
+  .bubble-row.user .bubble-meta{text-align:right}
+  .bubble p{margin-bottom:8px}.bubble p:last-child{margin-bottom:0}
+  .bubble strong{font-weight:600;color:var(--text)}
+  .bubble em{font-style:italic}
+  .bubble ul,.bubble ol{padding-left:18px;margin:8px 0}
+  .bubble li{margin-bottom:3px}
+  .bubble h1,.bubble h2,.bubble h3{font-weight:600;margin:12px 0 6px;color:var(--accent)}
+  .bubble h1{font-size:16px}.bubble h2{font-size:15px}.bubble h3{font-size:14px}
+  .bubble hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+  .bubble code{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--accent)}
+
+  /* TABLES */
+  .bubble table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+  .bubble th{background:var(--panel);color:var(--accent);font-weight:600;padding:8px 12px;border:1px solid var(--border);text-align:left;font-family:var(--mono);font-size:12px;letter-spacing:0.04em}
+  .bubble td{padding:8px 12px;border:1px solid var(--border);color:var(--text);vertical-align:top}
+  .bubble tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+
+  /* CODE BLOCKS */
+  .code-block{margin:10px 0;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--panel)}
+  .code-block-header{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+  .code-lang{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .copy-btn{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--sans);font-size:11px;padding:3px 9px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:border-color 0.15s,color 0.15s}
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .copy-btn.copied{border-color:var(--success);color:var(--success)}
+  .code-block pre{margin:0;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.65;color:var(--text);white-space:pre}
+  .code-block pre::-webkit-scrollbar{height:4px}
+  .code-block pre::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .typing-dots{display:flex;gap:4px;align-items:center;padding:6px 0}
+  .typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:dot-pulse 1.2s infinite}
+  .typing-dots span:nth-child(2){animation-delay:0.2s}
+  .typing-dots span:nth-child(3){animation-delay:0.4s}
+  @keyframes dot-pulse{0%,80%,100%{opacity:0.3;transform:scale(0.85)}40%{opacity:1;transform:scale(1)}}
+  .attachment-preview{display:flex;flex-wrap:wrap;gap:8px;padding:8px 22px;max-width:800px;margin:0 auto}
+  .attachment-chip{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .attachment-chip .remove-chip{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 4px}
+  .attachment-chip .remove-chip:hover{color:var(--danger)}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:14px;text-align:center;padding:40px 24px}
+  .empty-logo{font-family:var(--mono);font-size:32px;font-weight:500;color:var(--accent);letter-spacing:0.06em}
+  .empty-tagline{color:var(--muted);font-size:13px;max-width:360px;line-height:1.65}
+  .suggestions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px;max-width:480px;width:100%}
+  .suggestion-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;font-family:var(--sans);color:var(--text)}
+  .suggestion-card:hover{border-color:var(--accent);background:var(--panel)}
+  .suggestion-title{font-size:13px;font-weight:600;margin-bottom:3px}
+  .suggestion-sub{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .input-area{padding:8px 22px 14px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg)}
+  .input-wrapper{max-width:800px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;transition:border-color 0.15s}
+  .input-wrapper:focus-within{border-color:var(--accent)}
+  .input-top{display:flex;align-items:flex-end;gap:10px;padding:10px 12px}
+  .chat-input{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:14px;resize:none;outline:none;max-height:160px;overflow-y:auto;line-height:1.6;padding:2px 0}
+  .chat-input::placeholder{color:var(--muted)}
+  .input-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .attach-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s,color 0.15s}
+  .attach-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .send-btn{background:var(--accent);border:none;border-radius:8px;color:var(--bg);cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s}
+  .send-btn:hover:not(:disabled){opacity:0.8}
+  .send-btn:disabled{opacity:0.3;cursor:not-allowed}
+  .input-footer{max-width:800px;margin:6px auto 0;display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);font-family:var(--mono);padding:0 2px}
+
+  /* ── CODE TEST VIEW ── */
+  .codetest-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);gap:12px}
+  .codetest-title{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.05em}
+  .codetest-actions{display:flex;gap:8px}
+  .ct-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;padding:6px 14px;font-size:12px;font-family:var(--mono);transition:border-color 0.15s,color 0.15s,background 0.15s;display:flex;align-items:center;gap:6px}
+  .ct-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .ct-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+  .ct-btn.primary:hover{opacity:0.85}
+  .ct-btn.danger{border-color:var(--border);color:var(--muted)}
+  .ct-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+  .codetest-body{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;gap:0}
+  .ct-panel{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+  .ct-panel:last-child{border-right:none}
+  .ct-panel-header{padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface);font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .lang-select{background:var(--panel);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 8px;outline:none;cursor:pointer}
+  .lang-select option{background:var(--panel)}
+  .ct-editor{flex:1;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.65;padding:16px;resize:none;border:none;outline:none;overflow-y:auto;tab-size:2}
+  .ct-editor::placeholder{color:var(--muted)}
+  .ct-editor::-webkit-scrollbar{width:4px}
+  .ct-editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .ct-preview{flex:1;overflow:hidden;display:flex;flex-direction:column}
+  .ct-preview iframe{flex:1;border:none;background:#fff}
+  .ct-preview.has-analysis{flex:none;height:45%}
+  .ct-analysis{flex:1;overflow-y:auto;padding:14px 16px;background:var(--ai-bubble);border-top:1px solid var(--border);font-size:13.5px;line-height:1.7;color:var(--text)}
+  .ct-analysis::-webkit-scrollbar{width:4px}
+  .ct-analysis::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .ct-analysis-header{font-size:10px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .ct-right{display:flex;flex-direction:column;overflow:hidden}
+  .ct-preview-section{display:flex;flex-direction:column;overflow:hidden;transition:height 0.3s}
+  .ct-analysis-section{border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .ct-placeholder{display:flex;align-items:center;justify-content:center;flex:1;color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:20px;flex-direction:column;gap:8px}
+
+  /* VERSION BADGE */
+  .version-badge{position:fixed;bottom:16px;right:16px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;z-index:50;transition:border-color 0.15s,color 0.15s}
+  .version-badge:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* MODALS */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:480px;max-width:calc(100vw - 32px);max-height:85vh;overflow-y:auto;transform:translateY(10px);transition:transform 0.2s}
+  .modal-overlay.open .modal{transform:translateY(0)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+  .modal-title{font-size:14px;font-weight:600;color:var(--text)}
+  .modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:5px;transition:color 0.15s}
+  .modal-close:hover{color:var(--text)}
+  .modal-body{padding:20px;display:flex;flex-direction:column;gap:22px}
+  .setting-group{display:flex;flex-direction:column;gap:10px}
+  .setting-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em}
+  .setting-input{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);font-size:12.5px;padding:9px 12px;outline:none;transition:border-color 0.15s}
+  .setting-input:focus{border-color:var(--accent)}
+  .setting-input::placeholder{color:var(--muted)}
+  .setting-select{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 12px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23637a66' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;transition:border-color 0.15s}
+  .setting-select:focus{border-color:var(--accent)}
+  .setting-select option{background:var(--panel)}
+  .theme-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .theme-swatch{border:2px solid var(--border);border-radius:9px;padding:10px 8px;cursor:pointer;text-align:center;transition:border-color 0.15s;background:var(--panel)}
+  .theme-swatch:hover{border-color:var(--accent)}
+  .theme-swatch.active{border-color:var(--accent)}
+  .swatch-dot{width:20px;height:20px;border-radius:50%;margin:0 auto 6px}
+  .swatch-name{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .font-slider{width:100%;accent-color:var(--accent);cursor:pointer}
+  .font-preview{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;color:var(--muted);line-height:1.5}
+  .key-row{display:flex;align-items:center;gap:8px}
+  .key-row .setting-input{flex:1}
+  .key-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+  .key-dot.active{background:var(--success);box-shadow:0 0 6px var(--success)}
+  .save-btn{background:var(--accent);border:none;border-radius:var(--radius);color:var(--bg);font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 20px;cursor:pointer;transition:opacity 0.15s;align-self:flex-end}
+  .save-btn:hover{opacity:0.85}
+
+  /* CHANGELOG */
+  .changelog-entry{border-left:2px solid var(--accent-dim);padding:0 0 20px 16px}
+  .changelog-entry:last-child{padding-bottom:0}
+  .changelog-version{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);margin-bottom:2px}
+  .changelog-date{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px}
+  .changelog-item{font-size:13px;color:var(--text);margin-bottom:5px;padding-left:4px}
+  .changelog-item::before{content:"+ ";color:var(--accent);font-family:var(--mono)}
+
+  /* CONTEXT BAR */
+  .context-bar{padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:10px}
+  .context-label{font-size:10px;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+  .context-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .context-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s}
+  .context-pct{font-size:10px;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+
+  .toast{position:fixed;bottom:50px;right:16px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:11px 15px;font-size:13px;color:var(--text);opacity:0;transform:translateY(6px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:300;max-width:280px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.error{border-color:var(--danger);color:var(--danger)}
+  .toast.success{border-color:var(--success)}
+  *{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  @media(max-width:600px){.shell{grid-template-columns:1fr}.sidebar{display:none}.suggestions{grid-template-columns:1fr}.codetest-body{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo">Azriel</div>
+      <div class="logo-sub">Private AI</div>
+    </div>
+    <div class="sidebar-btns">
+      <button class="new-chat-btn" onclick="switchView('chat');newChat()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New conversation
+      </button>
+      <button class="code-test-btn" id="codeTestBtn" onclick="switchView('codetest')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Code Test
+      </button>
+    </div>
+    <div class="history-label">Recent</div>
+    <div class="history-list" id="historyList"></div>
+    <div class="sidebar-footer">
+      <button class="settings-btn" onclick="openModal('settings')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- CHAT VIEW -->
+    <div class="view active" id="chatView">
+      <div class="topbar">
+        <div class="chat-title" id="chatTitle">New conversation</div>
+        <div class="topbar-actions">
+          <button class="icon-btn" onclick="toggleSystemPrompt()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Personality
+          </button>
+          <button class="icon-btn" onclick="clearChat()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            Clear
+          </button>
+          <button class="icon-btn" onclick="exportChat()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <div class="system-prompt-area" id="systemPromptArea">
+        <div class="system-prompt-label">Personality — shapes how Azriel responds</div>
+        <textarea class="system-prompt-input" id="systemPromptInput" placeholder="You are Azriel, a powerful private AI. Be direct, thorough, and capable."></textarea>
+      </div>
+      <div class="context-bar">
+        <div class="context-label">Context</div>
+        <div class="context-track"><div class="context-fill" id="contextFill" style="width:0%"></div></div>
+        <div class="context-pct" id="contextPct">0 / 200k tokens</div>
+      </div>
+      <div class="messages" id="messagesContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-logo">Azriel</div>
+          <div class="empty-tagline">Local AI made by Jay Bravo using the Claude AI API</div>
+          <div class="suggestions">
+            <button class="suggestion-card" onclick="useSuggestion('Help me build a PPL flight training schedule for KFFC')"><div class="suggestion-title">✈️ Flight Training</div><div class="suggestion-sub">Build a PPL study schedule</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('Analyze my finances and tell me how to save faster')"><div class="suggestion-title">💰 Finance</div><div class="suggestion-sub">Budget & savings strategy</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('Write me code for a web app that')"><div class="suggestion-title">💻 Code</div><div class="suggestion-sub">Build apps, scripts, tools</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('What is today\\'s date and latest news?')"><div class="suggestion-title">🌐 Web Search</div><div class="suggestion-sub">Live info & current events</div></button>
+          </div>
+        </div>
+      </div>
+      <div id="attachmentPreview" class="attachment-preview" style="display:none"></div>
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-top">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask Azriel anything..." rows="1" onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+            <div class="input-actions">
+              <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" style="display:none" multiple accept="*/*" onchange="handleFiles(this.files)">
+        <div class="input-footer">
+          <span id="tokenCount">0 tokens</span>
+          <span>Enter to send · Shift+Enter for newline · 📎 attach files</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODE TEST VIEW -->
+    <div class="view" id="codetestView">
+      <div class="codetest-topbar">
+        <div class="codetest-title">&gt;_ Code Test</div>
+        <div class="codetest-actions">
+          <select class="lang-select" id="ctLang" onchange="updateEditorPlaceholder()">
+            <option value="html">HTML / CSS / JS</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="gdscript">GDScript</option>
+            <option value="other">Other</option>
+          </select>
+          <button class="ct-btn" onclick="clearCodeTest()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            Clear
+          </button>
+          <button class="ct-btn" onclick="analyzeCode()" id="analyzeBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Analyze
+          </button>
+          <button class="ct-btn primary" onclick="runCode()" id="runBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+            Run
+          </button>
+        </div>
+      </div>
+      <div class="codetest-body">
+        <!-- LEFT: EDITOR -->
+        <div class="ct-panel">
+          <div class="ct-panel-header">
+            <span>Editor</span>
+            <span id="ctCharCount" style="font-size:10px;color:var(--muted)">0 chars</span>
+          </div>
+          <textarea class="ct-editor" id="ctEditor" placeholder="Paste or write your code here..." oninput="updateCharCount()" onkeydown="handleEditorTab(event)"></textarea>
+        </div>
+        <!-- RIGHT: PREVIEW + ANALYSIS -->
+        <div class="ct-right">
+          <div class="ct-panel-header" style="border-bottom:1px solid var(--border)">
+            <span id="previewLabel">Preview</span>
+            <span id="previewStatus" style="color:var(--muted);font-size:10px"></span>
+          </div>
+          <div id="ctPreviewSection" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+            <div class="ct-placeholder" id="ctPlaceholder">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 9 12 6 15 9"/><line x1="12" y1="6" x2="12" y2="18"/></svg>
+              Press Run to see live preview
+            </div>
+            <iframe id="ctFrame" style="flex:1;border:none;display:none;background:#fff"></iframe>
+          </div>
+          <div id="ctAnalysisSection" style="display:none;flex-direction:column;border-top:1px solid var(--border);height:45%;overflow:hidden">
+            <div class="ct-panel-header">
+              <span>Azriel's Analysis</span>
+              <button class="ct-btn" onclick="closeAnalysis()" style="padding:2px 8px;font-size:10px">✕ Close</button>
+            </div>
+            <div class="ct-analysis" id="ctAnalysis"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- VERSION BADGE -->
+<button class="version-badge" onclick="openModal('changelog')">v0.0.4</button>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay" onclick="handleOverlayClick(event,'settingsOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" onclick="closeModal('settings')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-group">
+        <div class="setting-label">Anthropic API Key</div>
+        <div class="key-row">
+          <input class="setting-input" id="settingsApiKey" type="password" placeholder="sk-ant-..." autocomplete="off" oninput="handleKeyInput(this.value)"/>
+          <div class="key-dot" id="keyDot"></div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Model</div>
+        <select class="setting-select" id="modelSelect">
+          <option value="jay-bravo">⭐ Jay Bravo — Web search + smartest</option>
+          <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Smart, balanced</option>
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — Fast, affordable</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Color Theme</div>
+        <div class="theme-swatches">
+          <div class="theme-swatch active" data-theme="" onclick="setTheme('',this)"><div class="swatch-dot" style="background:#7aab82"></div><div class="swatch-name">Sage</div></div>
+          <div class="theme-swatch" data-theme="forest" onclick="setTheme('forest',this)"><div class="swatch-dot" style="background:#5a9e6a"></div><div class="swatch-name">Forest</div></div>
+          <div class="theme-swatch" data-theme="slate" onclick="setTheme('slate',this)"><div class="swatch-dot" style="background:#7a9aba"></div><div class="swatch-name">Slate</div></div>
+          <div class="theme-swatch" data-theme="charcoal" onclick="setTheme('charcoal',this)"><div class="swatch-dot" style="background:#a89a7a"></div><div class="swatch-name">Charcoal</div></div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Font Size — <span id="fontSizeLabel">15px</span></div>
+        <input class="font-slider" type="range" min="12" max="19" value="15" id="fontSizeSlider" oninput="previewFontSize(this.value)"/>
+        <div class="font-preview" id="fontPreview" style="font-size:15px">Azriel is ready. Ask anything you want.</div>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGELOG MODAL -->
+<div class="modal-overlay" id="changelogOverlay" onclick="handleOverlayClick(event,'changelogOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">What's new in Azriel</div>
+      <button class="modal-close" onclick="closeModal('changelog')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.4</div>
+        <div class="changelog-date">June 28, 2026</div>
+        <div class="changelog-item">Code Test mode — split screen editor with live HTML/JS/CSS preview</div>
+        <div class="changelog-item">Azriel code analysis — paste any code and get a full breakdown</div>
+        <div class="changelog-item">Table rendering fixed — markdown tables now display cleanly</div>
+        <div class="changelog-item">Context window bar — see exactly how much memory is being used</div>
+        <div class="changelog-item">Tab key support in code editor</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.3</div>
+        <div class="changelog-date">June 27, 2026</div>
+        <div class="changelog-item">Persistent memory — say "remember that..." to store facts</div>
+        <div class="changelog-item">File & document access — upload PDFs, images, text files</div>
+        <div class="changelog-item">Always-on web search in Jay Bravo model</div>
+        <div class="changelog-item">Smarter response length awareness</div>
+        <div class="changelog-item">Version badge with changelog</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.2</div>
+        <div class="changelog-date">June 27, 2026</div>
+        <div class="changelog-item">Jay Bravo model with live web search</div>
+        <div class="changelog-item">Chat bubbles with avatars</div>
+        <div class="changelog-item">Code blocks with copy button</div>
+        <div class="changelog-item">Settings panel — theme, font, model</div>
+        <div class="changelog-item">Date/time awareness</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.1</div>
+        <div class="changelog-date">June 27, 2026</div>
+        <div class="changelog-item">Azriel created by Jay Bravo</div>
+        <div class="changelog-item">Basic chat powered by Claude AI API</div>
+        <div class="changelog-item">Conversation history, export, GitHub Pages hosting</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const VERSION = '0.0.4';
+const CREATED = 'June 27, 2026';
+const MAX_TOKENS = 200000;
+
+let conversations = JSON.parse(localStorage.getItem('azriel_convos') || '[]');
+let currentConvoId = null;
+let messages = [];
+let isStreaming = false;
+let apiKey = localStorage.getItem('azriel_key') || '';
+let fontSize = parseInt(localStorage.getItem('azriel_fontsize') || '15');
+let currentTheme = localStorage.getItem('azriel_theme') || '';
+let selectedModel = localStorage.getItem('azriel_model') || 'jay-bravo';
+let memory = JSON.parse(localStorage.getItem('azriel_memory') || '{}');
+let pendingFiles = [];
+let currentView = 'chat';
+
+// INIT
+applyTheme(currentTheme);
+document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.theme === currentTheme));
+document.getElementById('fontSizeSlider').value = fontSize;
+document.getElementById('fontSizeLabel').textContent = fontSize + 'px';
+document.getElementById('fontPreview').style.fontSize = fontSize + 'px';
+document.getElementById('modelSelect').value = selectedModel;
+if (apiKey) { document.getElementById('settingsApiKey').value = apiKey; setKeyStatus(apiKey.startsWith('sk-ant-')); }
+renderHistory();
+updateSendBtn();
+
+// VIEW SWITCHING
+function switchView(view) {
+  currentView = view;
+  document.getElementById('chatView').classList.toggle('active', view === 'chat');
+  document.getElementById('codetestView').classList.toggle('active', view === 'codetest');
+  document.getElementById('codeTestBtn').classList.toggle('active', view === 'codetest');
+}
+
+// THEME
+function setTheme(theme, el) {
+  document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  currentTheme = theme;
+  applyTheme(theme);
+}
+function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); }
+
+// FONT
+function previewFontSize(val) {
+  document.getElementById('fontSizeLabel').textContent = val + 'px';
+  document.getElementById('fontPreview').style.fontSize = val + 'px';
+  fontSize = parseInt(val);
+}
+
+// MODALS
+function openModal(name) { document.getElementById(name + 'Overlay').classList.add('open'); }
+function closeModal(name) { document.getElementById(name + 'Overlay').classList.remove('open'); }
+function handleOverlayClick(e, id) { if (e.target === document.getElementById(id)) closeModal(id.replace('Overlay', '')); }
+
+function saveSettings() {
+  selectedModel = document.getElementById('modelSelect').value;
+  localStorage.setItem('azriel_key', apiKey);
+  localStorage.setItem('azriel_theme', currentTheme);
+  localStorage.setItem('azriel_fontsize', fontSize);
+  localStorage.setItem('azriel_model', selectedModel);
+  closeModal('settings');
+  showToast('Settings saved', 'success');
+}
+function handleKeyInput(val) { apiKey = val.trim(); setKeyStatus(apiKey.startsWith('sk-ant-')); updateSendBtn(); }
+function setKeyStatus(valid) { document.getElementById('keyDot').className = 'key-dot' + (valid ? ' active' : ''); }
+
+// FILES
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    const isImage = file.type.startsWith('image/');
+    const isPDF = file.type === 'application/pdf';
+    const isText = !isImage && !isPDF;
+    if (isImage) {
+      reader.onload = e => { pendingFiles.push({ name: file.name, type: 'image', data: e.target.result.split(',')[1], mediaType: file.type }); renderAttachmentChips(); };
+      reader.readAsDataURL(file);
+    } else if (isPDF) {
+      reader.onload = e => { pendingFiles.push({ name: file.name, type: 'pdf', data: e.target.result.split(',')[1], mediaType: 'application/pdf' }); renderAttachmentChips(); };
+      reader.readAsDataURL(file);
+    } else {
+      reader.onload = e => { pendingFiles.push({ name: file.name, type: 'text', data: e.target.result }); renderAttachmentChips(); };
+      reader.readAsText(file);
+    }
+  });
+  document.getElementById('fileInput').value = '';
+}
+function renderAttachmentChips() {
+  const preview = document.getElementById('attachmentPreview');
+  if (!pendingFiles.length) { preview.style.display = 'none'; return; }
+  preview.style.display = 'flex';
+  preview.innerHTML = pendingFiles.map((f, i) => `<div class="attachment-chip">${f.type === 'image' ? '🖼' : f.type === 'pdf' ? '📄' : '📝'} ${f.name}<button class="remove-chip" onclick="removeFile(${i})">×</button></div>`).join('');
+  updateSendBtn();
+}
+function removeFile(i) { pendingFiles.splice(i, 1); renderAttachmentChips(); updateSendBtn(); }
+function buildMessageContent(text) {
+  if (!pendingFiles.length) return text;
+  const content = [];
+  pendingFiles.forEach(f => {
+    if (f.type === 'image') content.push({ type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.data } });
+    else if (f.type === 'pdf') content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data } });
+    else content.push({ type: 'text', text: `[File: ${f.name}]\n${f.data}` });
+  });
+  content.push({ type: 'text', text });
+  return content;
+}
+
+// INPUT
+function updateSendBtn() {
+  const hasInput = document.getElementById('chatInput').value.trim().length > 0 || pendingFiles.length > 0;
+  document.getElementById('sendBtn').disabled = !apiKey || !hasInput || isStreaming;
+}
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160) + 'px'; updateSendBtn(); updateTokenCount(); }
+function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!document.getElementById('sendBtn').disabled) sendMessage(); } }
+function useSuggestion(text) { const i = document.getElementById('chatInput'); i.value = text; autoResize(i); i.focus(); }
+function toggleSystemPrompt() { document.getElementById('systemPromptArea').classList.toggle('open'); }
+
+// SEND
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if ((!text && !pendingFiles.length) || !apiKey || isStreaming) return;
+  if (!currentConvoId) startNewConvo(text || pendingFiles[0].name);
+  const userContent = buildMessageContent(text || '(see attached files)');
+  const displayText = text + (pendingFiles.length ? '\n📎 ' + pendingFiles.map(f => f.name).join(', ') : '');
+  messages.push({ role: 'user', content: userContent });
+  appendBubble('user', displayText);
+  pendingFiles = []; renderAttachmentChips();
+  input.value = ''; input.style.height = 'auto';
+  updateSendBtn(); hideEmpty();
+  const typingEl = appendTyping();
+  isStreaming = true; updateSendBtn();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const memCtx = Object.entries(memory).length ? '\n\nThings to remember about Jay:\n' + Object.entries(memory).map(([k, v]) => `- ${v}`).join('\n') : '';
+  const baseSystem = document.getElementById('systemPromptInput').value.trim() ||
+    `You are Azriel, a powerful private AI built by Jay Bravo on ${CREATED}. You are version ${VERSION}.
+Be direct and intelligent. Adapt your response length — short for simple questions, detailed for complex ones. Never pad or repeat.
+When writing code, always use proper formatting with line breaks and indentation.`;
+  const systemPrompt = baseSystem + `\n\nCurrent date and time: ${dateStr} at ${timeStr}.` + memCtx;
+  const model = document.getElementById('modelSelect').value;
+  const isJayBravo = model === 'jay-bravo';
+  const actualModel = isJayBravo ? 'claude-sonnet-4-6' : model;
+  const apiMessages = messages.slice(-40).map(m => ({ role: m.role, content: m.content }));
+  try {
+    const body = { model: actualModel, max_tokens: 4096, system: systemPrompt, messages: apiMessages };
+    if (isJayBravo) { body.tools = [{ type: 'web_search_20250305', name: 'web_search' }]; body.stream = false; }
+    else { body.stream = true; }
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message || `HTTP ${response.status}`); }
+    typingEl.remove();
+    if (isJayBravo) {
+      const data = await response.json();
+      let fullText = '';
+      for (const block of data.content) { if (block.type === 'text') fullText += block.text; }
+      appendBubble('ai', fullText);
+      messages.push({ role: 'assistant', content: fullText });
+    } else {
+      const aiMsg = appendBubble('ai', '');
+      const contentEl = aiMsg.querySelector('.bubble-content');
+      let fullText = '';
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value).split('\n')) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try { const p = JSON.parse(data); if (p.type === 'content_block_delta' && p.delta?.text) { fullText += p.delta.text; renderContent(contentEl, fullText); scrollToBottom(); } } catch {}
+          }
+        }
+      }
+      messages.push({ role: 'assistant', content: fullText });
+    }
+    checkMemoryCommands(text);
+    saveConvo(); updateTokenCount();
+  } catch (err) { typingEl?.remove(); showToast('Error: ' + err.message, 'error'); }
+  isStreaming = false; updateSendBtn();
+}
+
+function checkMemoryCommands(text) {
+  const m = text.match(/(?:remember (?:that )?|don't forget (?:that )?|note that )(.+)/i);
+  if (m) { const key = 'note_' + Date.now(); memory[key] = m[1].trim(); localStorage.setItem('azriel_memory', JSON.stringify(memory)); showToast('Remembered: ' + m[1].trim().slice(0, 40), 'success'); }
+}
+
+// RENDER MARKDOWN + TABLES
+function renderContent(el, text) {
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  el.innerHTML = '';
+  parts.forEach(part => {
+    if (part.startsWith('```')) {
+      const lines = part.slice(3).split('\n');
+      const lang = lines[0].trim() || 'code';
+      const code = lines.slice(1).join('\n').replace(/```$/, '').trimEnd();
+      const block = document.createElement('div');
+      block.className = 'code-block';
+      const header = document.createElement('div');
+      header.className = 'code-block-header';
+      header.innerHTML = `<span class="code-lang">${escHtml(lang)}</span>`;
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+      copyBtn.onclick = () => { navigator.clipboard.writeText(code).then(() => { copyBtn.textContent = '✓ Copied'; copyBtn.classList.add('copied'); setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`; copyBtn.classList.remove('copied'); }, 2000); }); };
+      header.appendChild(copyBtn);
+      const pre = document.createElement('pre'); pre.textContent = code;
+      block.appendChild(header); block.appendChild(pre); el.appendChild(block);
+    } else if (part.trim()) {
+      const div = document.createElement('div');
+      div.innerHTML = renderInline(part);
+      el.appendChild(div);
+    }
+  });
+}
+
+function renderInline(text) {
+  // Tables
+  text = text.replace(/\|(.+)\|\n\|[-:| ]+\|\n((?:\|.+\|\n?)*)/g, (match, header, rows) => {
+    const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${escHtml(c.trim())}</th>`).join('');
+    const trs = rows.trim().split('\n').map(row => {
+      const tds = row.split('|').filter(c => c.trim()).map(c => `<td>${escHtml(c.trim())}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\|(.+)\|/g, m => m) // preserve tables already processed
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+function escHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// BUBBLES
+function appendBubble(role, text) {
+  hideEmpty();
+  const container = document.getElementById('messagesContainer');
+  const wrapper = document.createElement('div'); wrapper.className = 'message-wrapper';
+  const metaEl = document.createElement('div'); metaEl.className = 'bubble-meta'; metaEl.textContent = role === 'user' ? 'You' : 'Azriel';
+  const row = document.createElement('div'); row.className = 'bubble-row ' + role;
+  const avatar = document.createElement('div'); avatar.className = 'avatar ' + role; avatar.textContent = role === 'user' ? 'J' : 'AZ';
+  const bubble = document.createElement('div'); bubble.className = 'bubble ' + role;
+  const contentEl = document.createElement('div'); contentEl.className = 'bubble-content'; contentEl.style.fontSize = fontSize + 'px';
+  if (text) renderContent(contentEl, text);
+  bubble.appendChild(contentEl); row.appendChild(avatar); row.appendChild(bubble);
+  wrapper.appendChild(metaEl); wrapper.appendChild(row); container.appendChild(wrapper);
+  scrollToBottom(); return row;
+}
+function appendTyping() {
+  const container = document.getElementById('messagesContainer');
+  const wrapper = document.createElement('div'); wrapper.className = 'message-wrapper';
+  const metaEl = document.createElement('div'); metaEl.className = 'bubble-meta'; metaEl.textContent = 'Azriel';
+  const row = document.createElement('div'); row.className = 'bubble-row ai';
+  const avatar = document.createElement('div'); avatar.className = 'avatar ai'; avatar.textContent = 'AZ';
+  const bubble = document.createElement('div'); bubble.className = 'bubble ai';
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  row.appendChild(avatar); row.appendChild(bubble); wrapper.appendChild(metaEl); wrapper.appendChild(row); container.appendChild(wrapper);
+  scrollToBottom(); return wrapper;
+}
+function hideEmpty() { const el = document.getElementById('emptyState'); if (el) el.style.display = 'none'; }
+function scrollToBottom() { const c = document.getElementById('messagesContainer'); c.scrollTop = c.scrollHeight; }
+
+// CONVERSATIONS
+function startNewConvo(firstMsg) {
+  currentConvoId = Date.now().toString();
+  const title = firstMsg.slice(0, 42) + (firstMsg.length > 42 ? '…' : '');
+  document.getElementById('chatTitle').textContent = title;
+  conversations.unshift({ id: currentConvoId, title, messages: [] });
+  saveConvos(); renderHistory();
+}
+function saveConvo() { const idx = conversations.findIndex(c => c.id === currentConvoId); if (idx !== -1) conversations[idx].messages = [...messages]; saveConvos(); }
+function saveConvos() { localStorage.setItem('azriel_convos', JSON.stringify(conversations.slice(0, 50))); }
+function newChat() {
+  currentConvoId = null; messages = [];
+  const container = document.getElementById('messagesContainer');
+  container.innerHTML = ''; container.appendChild(buildEmptyState());
+  document.getElementById('chatTitle').textContent = 'New conversation';
+  document.getElementById('chatInput').value = ''; document.getElementById('chatInput').style.height = 'auto';
+  pendingFiles = []; renderAttachmentChips(); updateSendBtn(); renderHistory();
+}
+function buildEmptyState() {
+  const div = document.createElement('div'); div.id = 'emptyState'; div.className = 'empty-state';
+  div.innerHTML = `<div class="empty-logo">Azriel</div><div class="empty-tagline">Local AI made by Jay Bravo using the Claude AI API</div><div class="suggestions"><button class="suggestion-card" onclick="useSuggestion('Help me build a PPL flight training schedule for KFFC')"><div class="suggestion-title">✈️ Flight Training</div><div class="suggestion-sub">Build a PPL study schedule</div></button><button class="suggestion-card" onclick="useSuggestion('Analyze my finances and tell me how to save faster')"><div class="suggestion-title">💰 Finance</div><div class="suggestion-sub">Budget & savings strategy</div></button><button class="suggestion-card" onclick="useSuggestion('Write me code for a web app that')"><div class="suggestion-title">💻 Code</div><div class="suggestion-sub">Build apps, scripts, tools</div></button><button class="suggestion-card" onclick="useSuggestion('What is today\\'s date and latest news?')"><div class="suggestion-title">🌐 Web Search</div><div class="suggestion-sub">Live info & current events</div></button></div>`;
+  return div;
+}
+function loadConvo(id) {
+  const convo = conversations.find(c => c.id === id); if (!convo) return;
+  currentConvoId = id; messages = [...convo.messages];
+  document.getElementById('chatTitle').textContent = convo.title;
+  const container = document.getElementById('messagesContainer'); container.innerHTML = '';
+  messages.forEach(m => appendBubble(m.role === 'user' ? 'user' : 'ai', typeof m.content === 'string' ? m.content : '[attached content]'));
+  renderHistory(); updateTokenCount();
+}
+function renderHistory() {
+  const list = document.getElementById('historyList'); list.innerHTML = '';
+  if (!conversations.length) { const e = document.createElement('div'); e.style.cssText = 'padding:10px;font-size:12px;color:var(--muted);font-family:var(--mono);'; e.textContent = 'No conversations yet'; list.appendChild(e); return; }
+  conversations.forEach(c => { const item = document.createElement('div'); item.className = 'history-item' + (c.id === currentConvoId ? ' active' : ''); item.textContent = c.title; item.onclick = () => loadConvo(c.id); list.appendChild(item); });
+}
+function clearChat() {
+  if (!confirm('Clear this conversation?')) return;
+  messages = []; const container = document.getElementById('messagesContainer');
+  container.innerHTML = ''; container.appendChild(buildEmptyState());
+  if (currentConvoId) { conversations = conversations.filter(c => c.id !== currentConvoId); saveConvos(); renderHistory(); currentConvoId = null; }
+  document.getElementById('chatTitle').textContent = 'New conversation';
+}
+function exportChat() {
+  if (!messages.length) { showToast('Nothing to export yet', 'error'); return; }
+  const text = messages.map(m => `[${m.role.toUpperCase()}]\n${typeof m.content === 'string' ? m.content : '[file content]'}`).join('\n\n---\n\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `azriel-${Date.now()}.txt`; a.click();
+  showToast('Chat exported', 'success');
+}
+function updateTokenCount() {
+  const total = messages.reduce((n, m) => n + Math.ceil((typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).length / 4), 0);
+  document.getElementById('tokenCount').textContent = `~${total.toLocaleString()} tokens`;
+  const pct = Math.min((total / MAX_TOKENS) * 100, 100);
+  document.getElementById('contextFill').style.width = pct + '%';
+  document.getElementById('contextFill').style.background = pct > 80 ? 'var(--danger)' : pct > 50 ? '#c4a84a' : 'var(--accent)';
+  document.getElementById('contextPct').textContent = `${total.toLocaleString()} / 200k tokens`;
+}
+
+// CODE TEST
+function updateEditorPlaceholder() {
+  const lang = document.getElementById('ctLang').value;
+  const editor = document.getElementById('ctEditor');
+  const placeholders = {
+    html: '<!-- Paste your HTML/CSS/JS here -->\n<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>',
+    python: '# Paste your Python code here\n# Note: Azriel can analyze it, but cannot execute Python in the browser\n\nprint("Hello, World!")',
+    javascript: '// Paste your JavaScript here\nconsole.log("Hello, World!");',
+    gdscript: '# Paste your GDScript here\n# Azriel will analyze it — live preview not available for Godot\nextends Node\n\nfunc _ready():\n    print("Hello, World!")',
+    other: '// Paste your code here'
+  };
+  editor.placeholder = placeholders[lang] || placeholders.other;
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = lang !== 'html';
+  runBtn.style.opacity = lang !== 'html' ? '0.4' : '1';
+  runBtn.title = lang !== 'html' ? 'Live preview only works for HTML/CSS/JS' : 'Run code';
+}
+
+function updateCharCount() {
+  const len = document.getElementById('ctEditor').value.length;
+  document.getElementById('ctCharCount').textContent = len.toLocaleString() + ' chars';
+}
+
+function handleEditorTab(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const el = document.getElementById('ctEditor');
+    const start = el.selectionStart;
+    el.value = el.value.substring(0, start) + '  ' + el.value.substring(el.selectionEnd);
+    el.selectionStart = el.selectionEnd = start + 2;
+    updateCharCount();
+  }
+}
+
+function runCode() {
+  const code = document.getElementById('ctEditor').value.trim();
+  const lang = document.getElementById('ctLang').value;
+  if (!code) { showToast('No code to run', 'error'); return; }
+  if (lang !== 'html') { showToast('Live preview only works for HTML/CSS/JS', 'error'); return; }
+  const frame = document.getElementById('ctFrame');
+  const placeholder = document.getElementById('ctPlaceholder');
+  placeholder.style.display = 'none';
+  frame.style.display = 'block';
+  frame.srcdoc = code;
+  document.getElementById('previewStatus').textContent = 'Running';
+  document.getElementById('previewLabel').textContent = 'Live Preview';
+  frame.onload = () => { document.getElementById('previewStatus').textContent = '● Live'; };
+}
+
+async function analyzeCode() {
+  const code = document.getElementById('ctEditor').value.trim();
+  if (!code) { showToast('No code to analyze', 'error'); return; }
+  if (!apiKey) { showToast('Add your API key in Settings first', 'error'); return; }
+  const lang = document.getElementById('ctLang').value;
+  const analysisSection = document.getElementById('ctAnalysisSection');
+  const analysisEl = document.getElementById('ctAnalysis');
+  analysisSection.style.display = 'flex';
+  analysisEl.innerHTML = '<div class="ct-analysis-header"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.style.opacity = '0.5';
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2048,
+        stream: true,
+        system: `You are Azriel, a code analysis AI built by Jay Bravo. Analyze the provided ${lang} code. Cover: what it does, how it works, any bugs or issues, suggestions to improve it. Be direct and technical. Use proper markdown formatting.`,
+        messages: [{ role: 'user', content: `Analyze this ${lang} code:\n\`\`\`${lang}\n${code}\n\`\`\`` }]
+      })
+    });
+    if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message); }
+    let fullText = '';
+    analysisEl.innerHTML = '<div class="ct-analysis-header">Azriel\'s Analysis</div><div id="ctAnalysisContent"></div>';
+    const contentEl = document.getElementById('ctAnalysisContent');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split('\n')) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try { const p = JSON.parse(data); if (p.type === 'content_block_delta' && p.delta?.text) { fullText += p.delta.text; renderContent(contentEl, fullText); } } catch {}
+        }
+      }
+    }
+  } catch (err) { analysisEl.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`; }
+  btn.disabled = false; btn.style.opacity = '1';
+}
+
+function closeAnalysis() {
+  document.getElementById('ctAnalysisSection').style.display = 'none';
+}
+
+function clearCodeTest() {
+  document.getElementById('ctEditor').value = '';
+  document.getElementById('ctFrame').style.display = 'none';
+  document.getElementById('ctPlaceholder').style.display = 'flex';
+  document.getElementById('ctAnalysisSection').style.display = 'none';
+  document.getElementById('previewStatus').textContent = '';
+  document.getElementById('previewLabel').textContent = 'Preview';
+  updateCharCount();
+}
+
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => el.className = 'toast', 3000);
+}
+
+// Init code test
+updateEditorPlaceholder();
+</script>
+</body>
+</html>
