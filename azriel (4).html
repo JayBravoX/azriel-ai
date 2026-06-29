@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azriel — Private AI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1210;--surface:#141a15;--panel:#1a221b;--border:#263028;
+  --accent:#7aab82;--accent-dim:#4d7a55;--accent-glow:rgba(122,171,130,0.10);
+  --text:#dce8dd;--muted:#637a66;--danger:#c47a7a;--success:#7aab82;
+  --user-bubble:#1e2e20;--ai-bubble:#161e17;
+  --sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--radius:10px;
+}
+[data-theme="forest"]{--bg:#0a0f0a;--surface:#0f160f;--panel:#141e14;--border:#1e2e1e;--accent:#5a9e6a;--accent-dim:#3a6e4a;--text:#d0e8d4;--muted:#4a6a4e;--user-bubble:#182018;--ai-bubble:#111811}
+[data-theme="slate"]{--bg:#0d1117;--surface:#131920;--panel:#1a2230;--border:#22304a;--accent:#7a9aba;--accent-dim:#4d6e8a;--text:#dce4f0;--muted:#5a6e88;--user-bubble:#1a2535;--ai-bubble:#131c28}
+[data-theme="charcoal"]{--bg:#111111;--surface:#181818;--panel:#202020;--border:#2e2e2e;--accent:#a89a7a;--accent-dim:#786a4a;--text:#e8e0d0;--muted:#6a6060;--user-bubble:#252018;--ai-bubble:#1a1a1a}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;overflow:hidden;transition:background 0.3s,color 0.3s}
+.shell{display:grid;grid-template-columns:230px 1fr;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.logo-area{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent);letter-spacing:0.04em}
+.logo-sub{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;font-family:var(--mono)}
+.sidebar-btns{padding:10px 10px 4px;display:flex;flex-direction:column;gap:5px}
+.sb-btn{border-radius:var(--radius);font-family:var(--sans);font-size:12.5px;font-weight:500;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.15s;width:100%;text-align:left}
+.sb-btn.primary{background:var(--accent-glow);border:1px solid var(--accent-dim);color:var(--accent)}
+.sb-btn.primary:hover{background:rgba(122,171,130,0.18);border-color:var(--accent)}
+.sb-btn.secondary{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:12px}
+.sb-btn.secondary:hover{border-color:var(--accent);color:var(--accent);background:var(--panel)}
+.sb-btn.secondary.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.sidebar-section-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;padding:10px 14px 5px}
+.history-list{flex:1;overflow-y:auto;padding:0 6px 6px}
+.history-list::-webkit-scrollbar{width:3px}
+.history-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.history-item{padding:7px 10px;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:background 0.1s,color 0.1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+.history-item:hover{background:var(--panel);color:var(--text)}
+.history-item.active{background:var(--panel);color:var(--accent)}
+.rocket-project-item{padding:7px 10px;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;transition:background 0.1s,color 0.1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;display:flex;align-items:center;gap:6px}
+.rocket-project-item:hover{background:var(--panel);color:var(--text)}
+.rocket-project-item.active{background:var(--panel);color:var(--accent)}
+.sidebar-footer{padding:10px;border-top:1px solid var(--border)}
+.settings-btn{background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:12px;padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:border-color 0.15s,color 0.15s;width:100%}
+.settings-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.view{display:none;flex-direction:column;height:100%;overflow:hidden}
+.view.active{display:flex}
+
+/* CHAT */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;background:var(--surface)}
+.chat-title{font-size:13px;font-weight:500;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.icon-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;padding:5px 9px;display:flex;align-items:center;gap:5px;font-size:11.5px;font-family:var(--sans);transition:border-color 0.15s,color 0.15s;line-height:1}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.system-prompt-area{background:var(--surface);border-bottom:1px solid var(--border);overflow:hidden;max-height:0;transition:max-height 0.25s ease,padding 0.25s ease;flex-shrink:0}
+.system-prompt-area.open{max-height:160px;padding:12px 20px}
+.system-prompt-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px}
+.system-prompt-input{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 11px;resize:none;outline:none;height:84px;line-height:1.5;transition:border-color 0.15s}
+.system-prompt-input:focus{border-color:var(--accent)}
+.system-prompt-input::placeholder{color:var(--muted)}
+.context-bar{padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:10px}
+.context-label{font-size:10px;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.context-track{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.context-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s}
+.context-pct{font-size:10px;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.messages{flex:1;overflow-y:auto;padding:20px 0 10px;scroll-behavior:smooth}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.message-wrapper{padding:0 18px;max-width:780px;margin:0 auto 14px;width:100%;animation:fadeUp 0.18s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.bubble-row{display:flex;gap:9px;align-items:flex-end}
+.bubble-row.user{flex-direction:row-reverse}
+.avatar{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:600;font-family:var(--mono)}
+.avatar.user{background:var(--accent-dim);color:var(--bg)}
+.avatar.ai{background:var(--panel);border:1px solid var(--border);color:var(--accent)}
+.bubble{max-width:78%;padding:10px 14px;border-radius:13px;font-size:14px;line-height:1.72;word-break:break-word}
+.bubble.user{background:var(--user-bubble);border:1px solid var(--border);border-bottom-right-radius:4px;color:var(--text)}
+.bubble.ai{background:var(--ai-bubble);border:1px solid var(--border);border-bottom-left-radius:4px;color:var(--text)}
+.bubble-meta{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:3px}
+.bubble-row.user .bubble-meta{text-align:right}
+.bubble p{margin-bottom:8px}.bubble p:last-child{margin-bottom:0}
+.bubble strong{font-weight:600;color:var(--text)}
+.bubble em{font-style:italic}
+.bubble ul,.bubble ol{padding-left:18px;margin:8px 0}
+.bubble li{margin-bottom:3px}
+.bubble h1,.bubble h2,.bubble h3{font-weight:600;margin:10px 0 5px;color:var(--accent)}
+.bubble h1{font-size:16px}.bubble h2{font-size:15px}.bubble h3{font-size:14px}
+.bubble hr{border:none;border-top:1px solid var(--border);margin:10px 0}
+.bubble code{font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--accent)}
+.bubble table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+.bubble th{background:var(--panel);color:var(--accent);font-weight:600;padding:7px 11px;border:1px solid var(--border);text-align:left;font-family:var(--mono);font-size:11px}
+.bubble td{padding:7px 11px;border:1px solid var(--border);color:var(--text);vertical-align:top}
+.bubble tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+.code-block{margin:10px 0;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--panel)}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.code-lang{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+.copy-btn{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--sans);font-size:11px;padding:3px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:border-color 0.15s,color 0.15s}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.copy-btn.copied{border-color:var(--success);color:var(--success)}
+.code-block pre{margin:0;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--text);white-space:pre}
+.typing-dots{display:flex;gap:4px;align-items:center;padding:5px 0}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:dot-pulse 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:0.2s}
+.typing-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes dot-pulse{0%,80%,100%{opacity:0.3;transform:scale(0.85)}40%{opacity:1;transform:scale(1)}}
+.attachment-preview{display:flex;flex-wrap:wrap;gap:7px;padding:7px 20px;max-width:780px;margin:0 auto}
+.attachment-chip{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.attachment-chip .remove-chip{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 3px}
+.attachment-chip .remove-chip:hover{color:var(--danger)}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;padding:40px 24px}
+.empty-logo{font-family:var(--mono);font-size:30px;font-weight:500;color:var(--accent);letter-spacing:0.06em}
+.empty-tagline{color:var(--muted);font-size:13px;max-width:340px;line-height:1.65}
+.suggestions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;max-width:460px;width:100%}
+.suggestion-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s;font-family:var(--sans);color:var(--text)}
+.suggestion-card:hover{border-color:var(--accent);background:var(--panel)}
+.suggestion-title{font-size:12.5px;font-weight:600;margin-bottom:3px}
+.suggestion-sub{font-size:11px;color:var(--muted);line-height:1.4}
+.input-area{padding:8px 20px 14px;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg)}
+.input-wrapper{max-width:780px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;transition:border-color 0.15s}
+.input-wrapper:focus-within{border-color:var(--accent)}
+.input-top{display:flex;align-items:flex-end;gap:9px;padding:9px 11px}
+.chat-input{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:14px;resize:none;outline:none;max-height:150px;overflow-y:auto;line-height:1.6;padding:2px 0}
+.chat-input::placeholder{color:var(--muted)}
+.input-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.attach-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s,color 0.15s}
+.attach-btn:hover{border-color:var(--accent);color:var(--accent)}
+.send-btn{background:var(--accent);border:none;border-radius:7px;color:var(--bg);cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s}
+.send-btn:hover:not(:disabled){opacity:0.8}
+.send-btn:disabled{opacity:0.3;cursor:not-allowed}
+.input-footer{max-width:780px;margin:5px auto 0;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:var(--mono);padding:0 2px}
+
+/* CODE TEST */
+.codetest-topbar{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);gap:12px}
+.codetest-title{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.05em}
+.codetest-actions{display:flex;gap:7px}
+.ct-btn{background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;padding:5px 12px;font-size:12px;font-family:var(--mono);transition:border-color 0.15s,color 0.15s,background 0.15s;display:flex;align-items:center;gap:5px}
+.ct-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ct-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+.ct-btn.primary:hover{opacity:0.85}
+.codetest-body{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden}
+.ct-panel{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.ct-panel:last-child{border-right:none}
+.ct-panel-header{padding:7px 13px;border-bottom:1px solid var(--border);background:var(--surface);font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.lang-select{background:var(--panel);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;outline:none;cursor:pointer}
+.lang-select option{background:var(--panel)}
+.ct-editor{flex:1;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.65;padding:14px;resize:none;border:none;outline:none;overflow-y:auto;tab-size:2}
+.ct-editor::placeholder{color:var(--muted)}
+.ct-placeholder{display:flex;align-items:center;justify-content:center;flex:1;color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:20px;flex-direction:column;gap:8px}
+.ct-right{display:flex;flex-direction:column;overflow:hidden}
+.ct-analysis{flex:1;overflow-y:auto;padding:13px 15px;background:var(--ai-bubble);font-size:13.5px;line-height:1.7;color:var(--text)}
+.ct-analysis-header{font-size:10px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:9px}
+
+/* ROCKETRY VIEW */
+.rocket-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);gap:12px}
+.rocket-title{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.04em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rocket-actions{display:flex;gap:7px;flex-shrink:0}
+.rocket-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.rocket-body::-webkit-scrollbar{width:4px}
+.rocket-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ACCORDION SECTIONS */
+.r-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.r-section-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;transition:background 0.15s;user-select:none}
+.r-section-header:hover{background:var(--panel)}
+.r-section-title{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.r-section-icon{font-size:16px}
+.r-section-chevron{color:var(--muted);transition:transform 0.2s;font-size:12px}
+.r-section.open .r-section-chevron{transform:rotate(180deg)}
+.r-section-body{display:none;padding:0 16px 16px;flex-direction:column;gap:14px}
+.r-section.open .r-section-body{display:flex}
+
+/* FORM FIELDS */
+.r-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.r-field{display:flex;flex-direction:column;gap:5px}
+.r-field.full{grid-column:1/-1}
+.r-label{font-size:10.5px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+.r-input{background:var(--panel);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 11px;outline:none;transition:border-color 0.15s;width:100%}
+.r-input:focus{border-color:var(--accent)}
+.r-input::placeholder{color:var(--muted)}
+.r-select{background:var(--panel);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 11px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23637a66' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;width:100%;transition:border-color 0.15s}
+.r-select:focus{border-color:var(--accent)}
+.r-select option{background:var(--panel)}
+
+/* SECTION CHAT */
+.r-chat-toggle{display:flex;align-items:center;gap:7px;background:transparent;border:1px dashed var(--border);border-radius:7px;color:var(--muted);font-size:12px;font-family:var(--mono);padding:7px 11px;cursor:pointer;transition:border-color 0.15s,color 0.15s;width:100%}
+.r-chat-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.r-chat-box{display:none;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg)}
+.r-chat-box.open{display:flex}
+.r-chat-msgs{height:180px;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.r-chat-msgs::-webkit-scrollbar{width:3px}
+.r-chat-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.r-msg{font-size:12.5px;line-height:1.6;padding:7px 10px;border-radius:8px;max-width:90%}
+.r-msg.user{background:var(--user-bubble);border:1px solid var(--border);color:var(--text);align-self:flex-end;border-bottom-right-radius:3px}
+.r-msg.ai{background:var(--ai-bubble);border:1px solid var(--border);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px}
+.r-chat-input-row{display:flex;gap:0;border-top:1px solid var(--border)}
+.r-chat-input{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 12px;outline:none}
+.r-chat-input::placeholder{color:var(--muted)}
+.r-chat-send{background:var(--accent);border:none;color:var(--bg);cursor:pointer;padding:0 14px;font-size:12px;font-family:var(--mono);font-weight:500;transition:opacity 0.15s;flex-shrink:0}
+.r-chat-send:hover{opacity:0.8}
+.r-chat-send:disabled{opacity:0.3;cursor:not-allowed}
+
+/* BUILD SHEET BTN */
+.build-sheet-btn{background:var(--accent);border:none;border-radius:var(--radius);color:var(--bg);font-family:var(--sans);font-size:13px;font-weight:600;padding:12px 20px;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.build-sheet-btn:hover{opacity:0.85}
+.build-sheet-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:460px;max-width:calc(100vw - 32px);max-height:85vh;overflow-y:auto;transform:translateY(10px);transition:transform 0.2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 13px;border-bottom:1px solid var(--border)}
+.modal-title{font-size:14px;font-weight:600;color:var(--text)}
+.modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:5px;transition:color 0.15s}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:18px;display:flex;flex-direction:column;gap:20px}
+.setting-group{display:flex;flex-direction:column;gap:9px}
+.setting-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em}
+.setting-input{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);font-size:12.5px;padding:8px 11px;outline:none;transition:border-color 0.15s}
+.setting-input:focus{border-color:var(--accent)}
+.setting-input::placeholder{color:var(--muted)}
+.setting-select{width:100%;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 11px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23637a66' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;transition:border-color 0.15s}
+.setting-select:focus{border-color:var(--accent)}
+.setting-select option{background:var(--panel)}
+.theme-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.theme-swatch{border:2px solid var(--border);border-radius:9px;padding:9px 7px;cursor:pointer;text-align:center;transition:border-color 0.15s;background:var(--panel)}
+.theme-swatch:hover{border-color:var(--accent)}
+.theme-swatch.active{border-color:var(--accent)}
+.swatch-dot{width:18px;height:18px;border-radius:50%;margin:0 auto 5px}
+.swatch-name{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.font-slider{width:100%;accent-color:var(--accent);cursor:pointer}
+.font-preview{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;color:var(--muted);line-height:1.5}
+.key-row{display:flex;align-items:center;gap:7px}
+.key-row .setting-input{flex:1}
+.key-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.key-dot.active{background:var(--success);box-shadow:0 0 6px var(--success)}
+.save-btn{background:var(--accent);border:none;border-radius:var(--radius);color:var(--bg);font-family:var(--sans);font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;transition:opacity 0.15s;align-self:flex-end}
+.save-btn:hover{opacity:0.85}
+.changelog-entry{border-left:2px solid var(--accent-dim);padding:0 0 18px 14px}
+.changelog-entry:last-child{padding-bottom:0}
+.changelog-version{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);margin-bottom:2px}
+.changelog-date{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px}
+.changelog-item{font-size:13px;color:var(--text);margin-bottom:4px;padding-left:4px}
+.changelog-item::before{content:"+ ";color:var(--accent);font-family:var(--mono)}
+.version-badge{position:fixed;bottom:14px;right:14px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;z-index:50;transition:border-color 0.15s,color 0.15s}
+.version-badge:hover{border-color:var(--accent);color:var(--accent)}
+.toast{position:fixed;bottom:46px;right:14px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text);opacity:0;transform:translateY(6px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:300;max-width:260px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{border-color:var(--danger);color:var(--danger)}
+.toast.success{border-color:var(--success)}
+*{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+@media(max-width:600px){.shell{grid-template-columns:1fr}.sidebar{display:none}.suggestions{grid-template-columns:1fr}.r-field-grid{grid-template-columns:1fr}.codetest-body{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo">Azriel</div>
+      <div class="logo-sub">Private AI</div>
+    </div>
+    <div class="sidebar-btns">
+      <button class="sb-btn primary" onclick="switchView('chat');newChat()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New conversation
+      </button>
+      <button class="sb-btn secondary" id="codeTestBtn" onclick="switchView('codetest')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Code Test
+      </button>
+      <button class="sb-btn secondary" onclick="newRocketProject()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L8.5 8.5 2 10l5 4.5L5.5 21 12 17.5 18.5 21 17 14.5 22 10l-6.5-1.5z"/></svg>
+        New Rocket Project
+      </button>
+    </div>
+    <div class="sidebar-section-label">Chats</div>
+    <div class="history-list" id="historyList"></div>
+    <div class="sidebar-section-label" id="rocketLabel" style="display:none">Rocket Projects</div>
+    <div class="history-list" id="rocketList" style="display:none"></div>
+    <div class="sidebar-footer">
+      <button class="settings-btn" onclick="openModal('settings')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- CHAT VIEW -->
+    <div class="view active" id="chatView">
+      <div class="topbar">
+        <div class="chat-title" id="chatTitle">New conversation</div>
+        <div class="topbar-actions">
+          <button class="icon-btn" onclick="toggleSystemPrompt()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Personality
+          </button>
+          <button class="icon-btn" onclick="clearChat()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            Clear
+          </button>
+          <button class="icon-btn" onclick="exportChat()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <div class="system-prompt-area" id="systemPromptArea">
+        <div class="system-prompt-label">Personality</div>
+        <textarea class="system-prompt-input" id="systemPromptInput" placeholder="You are Azriel, a powerful private AI built by Jay Bravo. Be direct, thorough, and capable."></textarea>
+      </div>
+      <div class="context-bar">
+        <div class="context-label">Context</div>
+        <div class="context-track"><div class="context-fill" id="contextFill" style="width:0%"></div></div>
+        <div class="context-pct" id="contextPct">0 / 200k tokens</div>
+      </div>
+      <div class="messages" id="messagesContainer">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-logo">Azriel</div>
+          <div class="empty-tagline">Local AI made by Jay Bravo using the Claude AI API</div>
+          <div class="suggestions">
+            <button class="suggestion-card" onclick="useSuggestion('Help me build a PPL flight training schedule for KFFC')"><div class="suggestion-title">✈️ Flight Training</div><div class="suggestion-sub">Build a PPL study schedule</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('Analyze my finances and tell me how to save faster')"><div class="suggestion-title">💰 Finance</div><div class="suggestion-sub">Budget & savings strategy</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('Write me code for a web app that')"><div class="suggestion-title">💻 Code</div><div class="suggestion-sub">Build apps, scripts, tools</div></button>
+            <button class="suggestion-card" onclick="useSuggestion('What is today\\'s date and latest news?')"><div class="suggestion-title">🌐 Web Search</div><div class="suggestion-sub">Live info & current events</div></button>
+          </div>
+        </div>
+      </div>
+      <div id="attachmentPreview" class="attachment-preview" style="display:none"></div>
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-top">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask Azriel anything..." rows="1" onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+            <div class="input-actions">
+              <button class="attach-btn" onclick="document.getElementById('fileInput').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" style="display:none" multiple accept="*/*" onchange="handleFiles(this.files)">
+        <div class="input-footer">
+          <span id="tokenCount">0 tokens</span>
+          <span>Enter to send · Shift+Enter for newline</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODE TEST VIEW -->
+    <div class="view" id="codetestView">
+      <div class="codetest-topbar">
+        <div class="codetest-title">&gt;_ Code Test</div>
+        <div class="codetest-actions">
+          <select class="lang-select" id="ctLang" onchange="updateEditorPlaceholder()">
+            <option value="html">HTML / CSS / JS</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="gdscript">GDScript</option>
+            <option value="other">Other</option>
+          </select>
+          <button class="ct-btn" onclick="clearCodeTest()">Clear</button>
+          <button class="ct-btn" onclick="analyzeCode()" id="analyzeBtn">Analyze</button>
+          <button class="ct-btn primary" onclick="runCode()" id="runBtn">▶ Run</button>
+        </div>
+      </div>
+      <div class="codetest-body">
+        <div class="ct-panel">
+          <div class="ct-panel-header">
+            <span>Editor</span>
+            <span id="ctCharCount" style="font-size:10px;color:var(--muted)">0 chars</span>
+          </div>
+          <textarea class="ct-editor" id="ctEditor" placeholder="Paste or write your code here..." oninput="updateCharCount()" onkeydown="handleEditorTab(event)"></textarea>
+        </div>
+        <div class="ct-right">
+          <div class="ct-panel-header">
+            <span id="previewLabel">Preview</span>
+            <span id="previewStatus" style="color:var(--muted);font-size:10px"></span>
+          </div>
+          <div id="ctPreviewSection" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+            <div class="ct-placeholder" id="ctPlaceholder">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              Press Run to see live preview
+            </div>
+            <iframe id="ctFrame" style="flex:1;border:none;display:none;background:#fff"></iframe>
+          </div>
+          <div id="ctAnalysisSection" style="display:none;flex-direction:column;border-top:1px solid var(--border);height:45%;overflow:hidden">
+            <div class="ct-panel-header">
+              <span>Azriel's Analysis</span>
+              <button class="ct-btn" onclick="closeAnalysis()" style="padding:2px 7px;font-size:10px">✕</button>
+            </div>
+            <div class="ct-analysis" id="ctAnalysis"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROCKETRY VIEW -->
+    <div class="view" id="rocketView">
+      <div class="rocket-topbar">
+        <div class="rocket-title" id="rocketProjectTitle">🚀 Rocket Project</div>
+        <div class="rocket-actions">
+          <button class="icon-btn" onclick="renameRocketProject()">✏️ Rename</button>
+          <button class="icon-btn" onclick="generateBuildSheet()" id="buildSheetBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Build Sheet
+          </button>
+        </div>
+      </div>
+      <div class="rocket-body" id="rocketBody"></div>
+    </div>
+  </main>
+</div>
+
+<button class="version-badge" onclick="openModal('changelog')">v0.0.5</button>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay" onclick="handleOverlayClick(event,'settingsOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" onclick="closeModal('settings')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-group">
+        <div class="setting-label">Anthropic API Key</div>
+        <div class="key-row">
+          <input class="setting-input" id="settingsApiKey" type="password" placeholder="sk-ant-..." autocomplete="off" oninput="handleKeyInput(this.value)"/>
+          <div class="key-dot" id="keyDot"></div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Model</div>
+        <select class="setting-select" id="modelSelect">
+          <option value="jay-bravo">⭐ Jay Bravo — Web search + smartest</option>
+          <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Smart, balanced</option>
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — Fast, affordable</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Color Theme</div>
+        <div class="theme-swatches">
+          <div class="theme-swatch active" data-theme="" onclick="setTheme('',this)"><div class="swatch-dot" style="background:#7aab82"></div><div class="swatch-name">Sage</div></div>
+          <div class="theme-swatch" data-theme="forest" onclick="setTheme('forest',this)"><div class="swatch-dot" style="background:#5a9e6a"></div><div class="swatch-name">Forest</div></div>
+          <div class="theme-swatch" data-theme="slate" onclick="setTheme('slate',this)"><div class="swatch-dot" style="background:#7a9aba"></div><div class="swatch-name">Slate</div></div>
+          <div class="theme-swatch" data-theme="charcoal" onclick="setTheme('charcoal',this)"><div class="swatch-dot" style="background:#a89a7a"></div><div class="swatch-name">Charcoal</div></div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Font Size — <span id="fontSizeLabel">15px</span></div>
+        <input class="font-slider" type="range" min="12" max="19" value="15" id="fontSizeSlider" oninput="previewFontSize(this.value)"/>
+        <div class="font-preview" id="fontPreview" style="font-size:15px">Azriel is ready. Ask anything.</div>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGELOG MODAL -->
+<div class="modal-overlay" id="changelogOverlay" onclick="handleOverlayClick(event,'changelogOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">What's new in Azriel</div>
+      <button class="modal-close" onclick="closeModal('changelog')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.5</div>
+        <div class="changelog-date">June 29, 2026</div>
+        <div class="changelog-item">Rocketry Projects — structured form builder with 5 sections</div>
+        <div class="changelog-item">Per-section Azriel chat — isolated history, shared rocket context</div>
+        <div class="changelog-item">Auto-fill — Azriel can fill form fields from chat answers</div>
+        <div class="changelog-item">Build Sheet generator — downloads printable .txt with parts list, assembly steps, safety checklist</div>
+        <div class="changelog-item">Multiple rocket projects — create and switch between them in sidebar</div>
+        <div class="changelog-item">Sidebar history fix — clicking old chats from Code Test now works correctly</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.4</div>
+        <div class="changelog-date">June 28, 2026</div>
+        <div class="changelog-item">Code Test mode with live HTML/CSS/JS preview</div>
+        <div class="changelog-item">Azriel code analysis with Analyze button</div>
+        <div class="changelog-item">Table rendering fixed</div>
+        <div class="changelog-item">Context window progress bar</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.3</div>
+        <div class="changelog-date">June 27, 2026</div>
+        <div class="changelog-item">Persistent memory, file uploads, web search, version badge</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v0.0.1 — v0.0.2</div>
+        <div class="changelog-date">June 27, 2026</div>
+        <div class="changelog-item">Azriel created by Jay Bravo — chat, bubbles, themes, GitHub Pages</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const VERSION='0.0.5', CREATED='June 27, 2026', MAX_TOKENS=200000;
+let conversations=JSON.parse(localStorage.getItem('azriel_convos')||'[]');
+let currentConvoId=null, messages=[], isStreaming=false;
+let apiKey=localStorage.getItem('azriel_key')||'';
+let fontSize=parseInt(localStorage.getItem('azriel_fontsize')||'15');
+let currentTheme=localStorage.getItem('azriel_theme')||'';
+let selectedModel=localStorage.getItem('azriel_model')||'jay-bravo';
+let memory=JSON.parse(localStorage.getItem('azriel_memory')||'{}');
+let pendingFiles=[], currentView='chat';
+let rocketProjects=JSON.parse(localStorage.getItem('azriel_rockets')||'[]');
+let currentRocketId=null;
+
+// INIT
+applyTheme(currentTheme);
+document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.toggle('active',s.dataset.theme===currentTheme));
+document.getElementById('fontSizeSlider').value=fontSize;
+document.getElementById('fontSizeLabel').textContent=fontSize+'px';
+document.getElementById('fontPreview').style.fontSize=fontSize+'px';
+document.getElementById('modelSelect').value=selectedModel;
+if(apiKey){document.getElementById('settingsApiKey').value=apiKey;setKeyStatus(apiKey.startsWith('sk-ant-'));}
+renderHistory(); renderRocketList(); updateSendBtn();
+
+// VIEW
+function switchView(view){
+  currentView=view;
+  ['chat','codetest','rocket'].forEach(v=>{
+    document.getElementById(v+'View').classList.toggle('active',v===view);
+  });
+  document.getElementById('codeTestBtn').classList.toggle('active',view==='codetest');
+}
+
+// THEME/FONT/SETTINGS
+function setTheme(theme,el){document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.remove('active'));el.classList.add('active');currentTheme=theme;applyTheme(theme);}
+function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);}
+function previewFontSize(val){document.getElementById('fontSizeLabel').textContent=val+'px';document.getElementById('fontPreview').style.fontSize=val+'px';fontSize=parseInt(val);}
+function openModal(n){document.getElementById(n+'Overlay').classList.add('open');}
+function closeModal(n){document.getElementById(n+'Overlay').classList.remove('open');}
+function handleOverlayClick(e,id){if(e.target===document.getElementById(id))closeModal(id.replace('Overlay',''));}
+function saveSettings(){
+  selectedModel=document.getElementById('modelSelect').value;
+  localStorage.setItem('azriel_key',apiKey);localStorage.setItem('azriel_theme',currentTheme);
+  localStorage.setItem('azriel_fontsize',fontSize);localStorage.setItem('azriel_model',selectedModel);
+  closeModal('settings');showToast('Settings saved','success');
+}
+function handleKeyInput(val){apiKey=val.trim();setKeyStatus(apiKey.startsWith('sk-ant-'));updateSendBtn();}
+function setKeyStatus(valid){document.getElementById('keyDot').className='key-dot'+(valid?' active':'');}
+
+// FILES
+function handleFiles(files){
+  Array.from(files).forEach(file=>{
+    const r=new FileReader();
+    if(file.type.startsWith('image/')){r.onload=e=>{pendingFiles.push({name:file.name,type:'image',data:e.target.result.split(',')[1],mediaType:file.type});renderAttachmentChips();};r.readAsDataURL(file);}
+    else if(file.type==='application/pdf'){r.onload=e=>{pendingFiles.push({name:file.name,type:'pdf',data:e.target.result.split(',')[1],mediaType:'application/pdf'});renderAttachmentChips();};r.readAsDataURL(file);}
+    else{r.onload=e=>{pendingFiles.push({name:file.name,type:'text',data:e.target.result});renderAttachmentChips();};r.readAsText(file);}
+  });
+  document.getElementById('fileInput').value='';
+}
+function renderAttachmentChips(){
+  const p=document.getElementById('attachmentPreview');
+  if(!pendingFiles.length){p.style.display='none';return;}
+  p.style.display='flex';
+  p.innerHTML=pendingFiles.map((f,i)=>`<div class="attachment-chip">${f.type==='image'?'🖼':f.type==='pdf'?'📄':'📝'} ${f.name}<button class="remove-chip" onclick="removeFile(${i})">×</button></div>`).join('');
+  updateSendBtn();
+}
+function removeFile(i){pendingFiles.splice(i,1);renderAttachmentChips();updateSendBtn();}
+function buildMessageContent(text){
+  if(!pendingFiles.length)return text;
+  const c=[];
+  pendingFiles.forEach(f=>{
+    if(f.type==='image')c.push({type:'image',source:{type:'base64',media_type:f.mediaType,data:f.data}});
+    else if(f.type==='pdf')c.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:f.data}});
+    else c.push({type:'text',text:`[File: ${f.name}]\n${f.data}`});
+  });
+  c.push({type:'text',text});return c;
+}
+
+// CHAT INPUT
+function updateSendBtn(){const h=document.getElementById('chatInput').value.trim().length>0||pendingFiles.length>0;document.getElementById('sendBtn').disabled=!apiKey||!h||isStreaming;}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,150)+'px';updateSendBtn();updateTokenCount();}
+function handleKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!document.getElementById('sendBtn').disabled)sendMessage();}}
+function useSuggestion(text){const i=document.getElementById('chatInput');i.value=text;autoResize(i);i.focus();}
+function toggleSystemPrompt(){document.getElementById('systemPromptArea').classList.toggle('open');}
+
+// SEND CHAT
+async function sendMessage(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+  if((!text&&!pendingFiles.length)||!apiKey||isStreaming)return;
+  if(!currentConvoId)startNewConvo(text||pendingFiles[0].name);
+  const userContent=buildMessageContent(text||'(see attached files)');
+  const displayText=text+(pendingFiles.length?'\n📎 '+pendingFiles.map(f=>f.name).join(', '):'');
+  messages.push({role:'user',content:userContent});
+  appendBubble('user',displayText);
+  pendingFiles=[];renderAttachmentChips();
+  input.value='';input.style.height='auto';
+  updateSendBtn();hideEmpty();
+  const typingEl=appendTyping();
+  isStreaming=true;updateSendBtn();
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const memCtx=Object.entries(memory).length?'\n\nThings to remember:\n'+Object.entries(memory).map(([,v])=>`- ${v}`).join('\n'):'';
+  const baseSystem=document.getElementById('systemPromptInput').value.trim()||
+    `You are Azriel, a powerful private AI built by Jay Bravo on ${CREATED}. Version ${VERSION}. Be direct. Match response length to the question. Never pad. Use proper code formatting.`;
+  const systemPrompt=baseSystem+`\n\nDate/time: ${dateStr} at ${timeStr}.`+memCtx;
+  const model=document.getElementById('modelSelect').value;
+  const isJB=model==='jay-bravo';
+  const actualModel=isJB?'claude-sonnet-4-6':model;
+  const apiMessages=messages.slice(-40).map(m=>({role:m.role,content:m.content}));
+  try{
+    const body={model:actualModel,max_tokens:4096,system:systemPrompt,messages:apiMessages};
+    if(isJB){body.tools=[{type:'web_search_20250305',name:'web_search'}];body.stream=false;}
+    else{body.stream=true;}
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify(body)
+    });
+    if(!response.ok){const err=await response.json();throw new Error(err.error?.message||`HTTP ${response.status}`);}
+    typingEl.remove();
+    if(isJB){
+      const data=await response.json();let ft='';
+      for(const b of data.content){if(b.type==='text')ft+=b.text;}
+      appendBubble('ai',ft);messages.push({role:'assistant',content:ft});
+    }else{
+      const aiMsg=appendBubble('ai','');const contentEl=aiMsg.querySelector('.bubble-content');
+      let ft='';const reader=response.body.getReader();const dec=new TextDecoder();
+      while(true){const{done,value}=await reader.read();if(done)break;
+        for(const line of dec.decode(value).split('\n')){
+          if(line.startsWith('data: ')){const d=line.slice(6);if(d==='[DONE]')continue;
+            try{const p=JSON.parse(d);if(p.type==='content_block_delta'&&p.delta?.text){ft+=p.delta.text;renderContent(contentEl,ft);scrollToBottom();}}catch{}
+          }
+        }
+      }
+      messages.push({role:'assistant',content:ft});
+    }
+    checkMemoryCommands(text);saveConvo();updateTokenCount();
+  }catch(err){typingEl?.remove();showToast('Error: '+err.message,'error');}
+  isStreaming=false;updateSendBtn();
+}
+
+function checkMemoryCommands(text){
+  const m=text.match(/(?:remember (?:that )?|don't forget (?:that )?|note that )(.+)/i);
+  if(m){memory['note_'+Date.now()]=m[1].trim();localStorage.setItem('azriel_memory',JSON.stringify(memory));showToast('Remembered: '+m[1].trim().slice(0,40),'success');}
+}
+
+// RENDER
+function renderContent(el,text){
+  const parts=text.split(/(```[\s\S]*?```)/g);
+  el.innerHTML='';
+  parts.forEach(part=>{
+    if(part.startsWith('```')){
+      const lines=part.slice(3).split('\n');
+      const lang=lines[0].trim()||'code';
+      const code=lines.slice(1).join('\n').replace(/```$/,'').trimEnd();
+      const block=document.createElement('div');block.className='code-block';
+      const header=document.createElement('div');header.className='code-block-header';
+      header.innerHTML=`<span class="code-lang">${escHtml(lang)}</span>`;
+      const cb=document.createElement('button');cb.className='copy-btn';
+      cb.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
+      cb.onclick=()=>{navigator.clipboard.writeText(code).then(()=>{cb.textContent='✓ Copied';cb.classList.add('copied');setTimeout(()=>{cb.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';cb.classList.remove('copied');},2000);});};
+      header.appendChild(cb);
+      const pre=document.createElement('pre');pre.textContent=code;
+      block.appendChild(header);block.appendChild(pre);el.appendChild(block);
+    }else if(part.trim()){
+      const div=document.createElement('div');div.innerHTML=renderInline(part);el.appendChild(div);
+    }
+  });
+}
+function renderInline(text){
+  text=text.replace(/\|(.+)\|\n\|[-:| ]+\|\n((?:\|.+\|\n?)*)/g,(match,header,rows)=>{
+    const ths=header.split('|').filter(c=>c.trim()).map(c=>`<th>${escHtml(c.trim())}</th>`).join('');
+    const trs=rows.trim().split('\n').map(row=>{const tds=row.split('|').filter(c=>c.trim()).map(c=>`<td>${escHtml(c.trim())}</td>`).join('');return`<tr>${tds}</tr>`;}).join('');
+    return`<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/^---$/gm,'<hr>').replace(/^\* (.+)$/gm,'<li>$1</li>').replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`).replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// BUBBLES
+function appendBubble(role,text){
+  hideEmpty();
+  const container=document.getElementById('messagesContainer');
+  const wrapper=document.createElement('div');wrapper.className='message-wrapper';
+  const meta=document.createElement('div');meta.className='bubble-meta';meta.textContent=role==='user'?'You':'Azriel';
+  const row=document.createElement('div');row.className='bubble-row '+role;
+  const av=document.createElement('div');av.className='avatar '+role;av.textContent=role==='user'?'J':'AZ';
+  const bubble=document.createElement('div');bubble.className='bubble '+role;
+  const ce=document.createElement('div');ce.className='bubble-content';ce.style.fontSize=fontSize+'px';
+  if(text)renderContent(ce,text);
+  bubble.appendChild(ce);row.appendChild(av);row.appendChild(bubble);
+  wrapper.appendChild(meta);wrapper.appendChild(row);container.appendChild(wrapper);
+  scrollToBottom();return row;
+}
+function appendTyping(){
+  const container=document.getElementById('messagesContainer');
+  const wrapper=document.createElement('div');wrapper.className='message-wrapper';
+  const meta=document.createElement('div');meta.className='bubble-meta';meta.textContent='Azriel';
+  const row=document.createElement('div');row.className='bubble-row ai';
+  const av=document.createElement('div');av.className='avatar ai';av.textContent='AZ';
+  const bubble=document.createElement('div');bubble.className='bubble ai';
+  bubble.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  row.appendChild(av);row.appendChild(bubble);wrapper.appendChild(meta);wrapper.appendChild(row);container.appendChild(wrapper);
+  scrollToBottom();return wrapper;
+}
+function hideEmpty(){const el=document.getElementById('emptyState');if(el)el.style.display='none';}
+function scrollToBottom(){const c=document.getElementById('messagesContainer');c.scrollTop=c.scrollHeight;}
+
+// CONVERSATIONS
+function startNewConvo(firstMsg){
+  currentConvoId=Date.now().toString();
+  const title=firstMsg.slice(0,42)+(firstMsg.length>42?'…':'');
+  document.getElementById('chatTitle').textContent=title;
+  conversations.unshift({id:currentConvoId,title,messages:[]});
+  saveConvos();renderHistory();
+}
+function saveConvo(){const idx=conversations.findIndex(c=>c.id===currentConvoId);if(idx!==-1)conversations[idx].messages=[...messages];saveConvos();}
+function saveConvos(){localStorage.setItem('azriel_convos',JSON.stringify(conversations.slice(0,50)));}
+function newChat(){
+  currentConvoId=null;messages=[];
+  const container=document.getElementById('messagesContainer');
+  container.innerHTML='';container.appendChild(buildEmptyState());
+  document.getElementById('chatTitle').textContent='New conversation';
+  document.getElementById('chatInput').value='';document.getElementById('chatInput').style.height='auto';
+  pendingFiles=[];renderAttachmentChips();updateSendBtn();renderHistory();
+}
+function buildEmptyState(){
+  const div=document.createElement('div');div.id='emptyState';div.className='empty-state';
+  div.innerHTML=`<div class="empty-logo">Azriel</div><div class="empty-tagline">Local AI made by Jay Bravo using the Claude AI API</div><div class="suggestions"><button class="suggestion-card" onclick="useSuggestion('Help me build a PPL flight training schedule for KFFC')"><div class="suggestion-title">✈️ Flight Training</div><div class="suggestion-sub">Build a PPL study schedule</div></button><button class="suggestion-card" onclick="useSuggestion('Analyze my finances and tell me how to save faster')"><div class="suggestion-title">💰 Finance</div><div class="suggestion-sub">Budget & savings strategy</div></button><button class="suggestion-card" onclick="useSuggestion('Write me code for a web app that')"><div class="suggestion-title">💻 Code</div><div class="suggestion-sub">Build apps, scripts, tools</div></button><button class="suggestion-card" onclick="useSuggestion('What is today\\'s date and latest news?')"><div class="suggestion-title">🌐 Web Search</div><div class="suggestion-sub">Live info & current events</div></button></div>`;
+  return div;
+}
+function loadConvo(id){
+  const convo=conversations.find(c=>c.id===id);if(!convo)return;
+  switchView('chat');
+  currentConvoId=id;messages=[...convo.messages];
+  document.getElementById('chatTitle').textContent=convo.title;
+  const container=document.getElementById('messagesContainer');container.innerHTML='';
+  messages.forEach(m=>appendBubble(m.role==='user'?'user':'ai',typeof m.content==='string'?m.content:'[attached content]'));
+  renderHistory();updateTokenCount();
+}
+function renderHistory(){
+  const list=document.getElementById('historyList');list.innerHTML='';
+  if(!conversations.length){const e=document.createElement('div');e.style.cssText='padding:8px 10px;font-size:11px;color:var(--muted);font-family:var(--mono);';e.textContent='No chats yet';list.appendChild(e);return;}
+  conversations.forEach(c=>{const item=document.createElement('div');item.className='history-item'+(c.id===currentConvoId?' active':'');item.textContent=c.title;item.onclick=()=>loadConvo(c.id);list.appendChild(item);});
+}
+function clearChat(){
+  if(!confirm('Clear this conversation?'))return;
+  messages=[];const container=document.getElementById('messagesContainer');
+  container.innerHTML='';container.appendChild(buildEmptyState());
+  if(currentConvoId){conversations=conversations.filter(c=>c.id!==currentConvoId);saveConvos();renderHistory();currentConvoId=null;}
+  document.getElementById('chatTitle').textContent='New conversation';
+}
+function exportChat(){
+  if(!messages.length){showToast('Nothing to export','error');return;}
+  const text=messages.map(m=>`[${m.role.toUpperCase()}]\n${typeof m.content==='string'?m.content:'[file]'}`).join('\n\n---\n\n');
+  const blob=new Blob([text],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`azriel-${Date.now()}.txt`;a.click();
+  showToast('Exported','success');
+}
+function updateTokenCount(){
+  const total=messages.reduce((n,m)=>n+Math.ceil((typeof m.content==='string'?m.content:JSON.stringify(m.content)).length/4),0);
+  document.getElementById('tokenCount').textContent=`~${total.toLocaleString()} tokens`;
+  const pct=Math.min((total/MAX_TOKENS)*100,100);
+  document.getElementById('contextFill').style.width=pct+'%';
+  document.getElementById('contextFill').style.background=pct>80?'var(--danger)':pct>50?'#c4a84a':'var(--accent)';
+  document.getElementById('contextPct').textContent=`${total.toLocaleString()} / 200k tokens`;
+}
+
+// CODE TEST
+function updateEditorPlaceholder(){
+  const lang=document.getElementById('ctLang').value;
+  const ph={html:'<!-- Paste HTML/CSS/JS here -->\n<!DOCTYPE html>\n<html>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>',python:'# Paste Python here (Azriel will analyze, not execute)\nprint("Hello")',javascript:'// Paste JavaScript here\nconsole.log("Hello");',gdscript:'# Paste GDScript here\nextends Node\nfunc _ready():\n    print("Hello")',other:'// Paste your code here'};
+  document.getElementById('ctEditor').placeholder=ph[lang]||ph.other;
+  const rb=document.getElementById('runBtn');
+  rb.disabled=lang!=='html';rb.style.opacity=lang!=='html'?'0.4':'1';
+}
+function updateCharCount(){document.getElementById('ctCharCount').textContent=document.getElementById('ctEditor').value.length.toLocaleString()+' chars';}
+function handleEditorTab(e){if(e.key==='Tab'){e.preventDefault();const el=document.getElementById('ctEditor');const s=el.selectionStart;el.value=el.value.substring(0,s)+'  '+el.value.substring(el.selectionEnd);el.selectionStart=el.selectionEnd=s+2;updateCharCount();}}
+function runCode(){
+  const code=document.getElementById('ctEditor').value.trim();
+  if(!code){showToast('No code to run','error');return;}
+  if(document.getElementById('ctLang').value!=='html'){showToast('Live preview: HTML/CSS/JS only','error');return;}
+  const frame=document.getElementById('ctFrame');
+  document.getElementById('ctPlaceholder').style.display='none';frame.style.display='block';
+  frame.srcdoc=code;document.getElementById('previewStatus').textContent='● Live';
+}
+async function analyzeCode(){
+  const code=document.getElementById('ctEditor').value.trim();
+  if(!code){showToast('No code to analyze','error');return;}
+  if(!apiKey){showToast('Add API key in Settings','error');return;}
+  const lang=document.getElementById('ctLang').value;
+  const sec=document.getElementById('ctAnalysisSection');const el=document.getElementById('ctAnalysis');
+  sec.style.display='flex';el.innerHTML='<div class="ct-analysis-header"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  const btn=document.getElementById('analyzeBtn');btn.disabled=true;btn.style.opacity='0.5';
+  try{
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2048,stream:true,
+        system:`You are Azriel, a code analysis AI. Analyze the provided ${lang} code. Cover what it does, how it works, any bugs, suggestions to improve. Be direct and technical.`,
+        messages:[{role:'user',content:`Analyze this ${lang} code:\n\`\`\`${lang}\n${code}\n\`\`\``}]})
+    });
+    if(!response.ok){const err=await response.json();throw new Error(err.error?.message);}
+    let ft='';
+    el.innerHTML='<div class="ct-analysis-header">Azriel\'s Analysis</div><div id="ctAnalysisContent"></div>';
+    const ce=document.getElementById('ctAnalysisContent');
+    const reader=response.body.getReader();const dec=new TextDecoder();
+    while(true){const{done,value}=await reader.read();if(done)break;
+      for(const line of dec.decode(value).split('\n')){
+        if(line.startsWith('data: ')){const d=line.slice(6);if(d==='[DONE]')continue;
+          try{const p=JSON.parse(d);if(p.type==='content_block_delta'&&p.delta?.text){ft+=p.delta.text;renderContent(ce,ft);}}catch{}
+        }
+      }
+    }
+  }catch(err){el.innerHTML=`<div style="color:var(--danger)">Error: ${err.message}</div>`;}
+  btn.disabled=false;btn.style.opacity='1';
+}
+function closeAnalysis(){document.getElementById('ctAnalysisSection').style.display='none';}
+function clearCodeTest(){
+  document.getElementById('ctEditor').value='';
+  document.getElementById('ctFrame').style.display='none';
+  document.getElementById('ctPlaceholder').style.display='flex';
+  document.getElementById('ctAnalysisSection').style.display='none';
+  document.getElementById('previewStatus').textContent='';
+  updateCharCount();
+}
+
+// ── ROCKETRY ──
+const SECTIONS=[
+  {id:'body',label:'Rocket Body',icon:'🚀',fields:[
+    {id:'length',label:'Length (inches)',type:'input',placeholder:'e.g. 18'},
+    {id:'diameter',label:'Body Diameter (inches)',type:'input',placeholder:'e.g. 1.6'},
+    {id:'wall',label:'Wall Thickness (inches)',type:'input',placeholder:'e.g. 0.065'},
+    {id:'material',label:'Body Material',type:'select',options:['Cardboard/Paper','Plastic','Fiberglass','Aluminum','Carbon Fiber']},
+    {id:'nose',label:'Nose Cone Type',type:'select',options:['Ogive','Conical','Elliptical','Parabolic','Power Series']},
+    {id:'nose_material',label:'Nose Cone Material',type:'select',options:['Plastic','Balsa Wood','Fiberglass','3D Printed']}
+  ]},
+  {id:'motor',label:'Motor / Engine',icon:'🔥',fields:[
+    {id:'class',label:'Thrust Class',type:'select',options:['1/4A','1/2A','A','B','C','D','E','F','G','H','I','J','K']},
+    {id:'designation',label:'Motor Designation',type:'input',placeholder:'e.g. C6-5'},
+    {id:'manufacturer',label:'Manufacturer',type:'select',options:['Estes','AeroTech','Cesaroni','Quest','Apogee']},
+    {id:'burn_time',label:'Burn Time (seconds)',type:'input',placeholder:'e.g. 1.9'},
+    {id:'thrust',label:'Average Thrust (Newtons)',type:'input',placeholder:'e.g. 7.0'},
+    {id:'delay',label:'Ejection Delay (seconds)',type:'input',placeholder:'e.g. 5'}
+  ]},
+  {id:'fins',label:'Fins',icon:'🔷',fields:[
+    {id:'quantity',label:'Number of Fins',type:'select',options:['3','4','5','6']},
+    {id:'shape',label:'Fin Shape',type:'select',options:['Trapezoidal','Delta','Elliptical','Clipped Delta','Swept']},
+    {id:'material',label:'Fin Material',type:'select',options:['Balsa Wood','Plywood','Cardstock','Fiberglass','Plastic']},
+    {id:'span',label:'Fin Span (inches)',type:'input',placeholder:'e.g. 2.5'},
+    {id:'root',label:'Root Chord (inches)',type:'input',placeholder:'e.g. 3.0'},
+    {id:'tip',label:'Tip Chord (inches)',type:'input',placeholder:'e.g. 1.5'},
+    {id:'attach',label:'Attachment Method',type:'select',options:['Wood Glue','Epoxy','CA Glue (Super Glue)','Screws']}
+  ]},
+  {id:'recovery',label:'Recovery System',icon:'🪂',fields:[
+    {id:'type',label:'Recovery Type',type:'select',options:['Parachute','Streamer','Tumble Recovery','Helicopter Recovery']},
+    {id:'chute_diameter',label:'Parachute Diameter (inches)',type:'input',placeholder:'e.g. 12'},
+    {id:'chute_material',label:'Parachute Material',type:'select',options:['Nylon','Mylar','Plastic','Ripstop Nylon']},
+    {id:'shroud_lines',label:'Number of Shroud Lines',type:'input',placeholder:'e.g. 6'},
+    {id:'shroud_length',label:'Shroud Line Length (inches)',type:'input',placeholder:'e.g. 12'},
+    {id:'shock_cord',label:'Shock Cord Material',type:'select',options:['Elastic','Kevlar','Nylon Webbing']},
+    {id:'shock_length',label:'Shock Cord Length (inches)',type:'input',placeholder:'e.g. 18'},
+    {id:'wadding',label:'Recovery Wadding',type:'select',options:['Cellulose Wadding','Dog Barf (nomex)','Nomex Blanket']}
+  ]},
+  {id:'launch',label:'Launch System',icon:'⚡',fields:[
+    {id:'rod_size',label:'Launch Rod Diameter (inches)',type:'select',options:['1/8 inch','3/16 inch','1/4 inch']},
+    {id:'rod_length',label:'Launch Rod Length (feet)',type:'input',placeholder:'e.g. 3'},
+    {id:'igniter',label:'Igniter Type',type:'select',options:['Estes Solar Igniter','Electric Match','Copperhead','MJG Igniter']},
+    {id:'launch_site',label:'Launch Site Notes',type:'input',placeholder:'e.g. Open field, 500ft radius clear'},
+    {id:'notes',label:'Additional Notes',type:'input',placeholder:'Any special setup requirements'}
+  ]}
+];
+
+function newRocketProject(){
+  const name=prompt('Project name:','Untitled Rocket');
+  if(!name)return;
+  const id=Date.now().toString();
+  const project={id,name,created:new Date().toLocaleDateString(),fields:{},chats:{}};
+  SECTIONS.forEach(s=>{project.chats[s.id]=[];});
+  rocketProjects.unshift(project);
+  saveRockets();renderRocketList();
+  openRocketProject(id);
+}
+function saveRockets(){localStorage.setItem('azriel_rockets',JSON.stringify(rocketProjects));}
+function renderRocketList(){
+  const list=document.getElementById('rocketList');
+  const label=document.getElementById('rocketLabel');
+  if(!rocketProjects.length){list.style.display='none';label.style.display='none';return;}
+  list.style.display='block';label.style.display='block';
+  list.innerHTML='';
+  rocketProjects.forEach(p=>{
+    const item=document.createElement('div');
+    item.className='rocket-project-item'+(p.id===currentRocketId?' active':'');
+    item.innerHTML='🚀 '+p.name;
+    item.onclick=()=>openRocketProject(p.id);
+    list.appendChild(item);
+  });
+}
+function openRocketProject(id){
+  currentRocketId=id;
+  switchView('rocket');
+  renderRocketList();
+  const project=rocketProjects.find(p=>p.id===id);
+  if(!project)return;
+  document.getElementById('rocketProjectTitle').textContent='🚀 '+project.name;
+  renderRocketBody(project);
+}
+function renderRocketBody(project){
+  const body=document.getElementById('rocketBody');
+  body.innerHTML='';
+  SECTIONS.forEach(section=>{
+    const sec=document.createElement('div');
+    sec.className='r-section';
+    sec.id='rsec-'+section.id;
+    sec.innerHTML=`
+      <div class="r-section-header" onclick="toggleSection('${section.id}')">
+        <div class="r-section-title"><span class="r-section-icon">${section.icon}</span>${section.label}</div>
+        <span class="r-section-chevron">▼</span>
+      </div>
+      <div class="r-section-body">
+        <div class="r-field-grid">${section.fields.map(f=>renderField(f,project)).join('')}</div>
+        <button class="r-chat-toggle" onclick="toggleSectionChat('${section.id}')">
+          💬 Ask Azriel about ${section.label}
+        </button>
+        <div class="r-chat-box" id="rchat-${section.id}">
+          <div class="r-chat-msgs" id="rmsgs-${section.id}"></div>
+          <div class="r-chat-input-row">
+            <input class="r-chat-input" id="rinput-${section.id}" placeholder="Ask about ${section.label.toLowerCase()}..." onkeydown="if(event.key==='Enter')sendSectionChat('${section.id}')"/>
+            <button class="r-chat-send" id="rsend-${section.id}" onclick="sendSectionChat('${section.id}')">Send</button>
+          </div>
+        </div>
+      </div>`;
+    body.appendChild(sec);
+    // Restore saved chat messages
+    if(project.chats[section.id]&&project.chats[section.id].length){
+      project.chats[section.id].forEach(m=>{
+        appendRocketMsg(section.id,m.role,m.content,false);
+      });
+    }
+  });
+  // Build sheet button
+  const btnDiv=document.createElement('div');
+  btnDiv.style.padding='4px 0 20px';
+  btnDiv.innerHTML=`<button class="build-sheet-btn" onclick="generateBuildSheet()">📄 Download Build Sheet</button>`;
+  body.appendChild(btnDiv);
+}
+function renderField(f,project){
+  const val=(project.fields[f.id]||'');
+  if(f.type==='select'){
+    const opts=f.options.map(o=>`<option${o===val?' selected':''}>${escHtml(o)}</option>`).join('');
+    return`<div class="r-field${f.id==='notes'||f.id==='launch_site'?' full':''}"><div class="r-label">${f.label}</div><select class="r-select" onchange="saveRocketField('${f.id}',this.value)">${opts}</select></div>`;
+  }
+  return`<div class="r-field${f.id==='notes'||f.id==='launch_site'?' full':''}"><div class="r-label">${f.label}</div><input class="r-input" value="${escHtml(val)}" placeholder="${f.placeholder||''}" oninput="saveRocketField('${f.id}',this.value)"/></div>`;
+}
+function saveRocketField(fieldId,value){
+  const project=rocketProjects.find(p=>p.id===currentRocketId);
+  if(!project)return;
+  project.fields[fieldId]=value;
+  saveRockets();
+}
+function toggleSection(id){
+  const sec=document.getElementById('rsec-'+id);
+  sec.classList.toggle('open');
+}
+function toggleSectionChat(id){
+  const box=document.getElementById('rchat-'+id);
+  box.classList.toggle('open');
+  if(box.classList.contains('open'))document.getElementById('rinput-'+id).focus();
+}
+function appendRocketMsg(sectionId,role,text,save=true){
+  const msgs=document.getElementById('rmsgs-'+sectionId);if(!msgs)return;
+  const div=document.createElement('div');div.className='r-msg '+role;div.textContent=text;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  if(save){
+    const project=rocketProjects.find(p=>p.id===currentRocketId);
+    if(project){project.chats[sectionId].push({role,content:text});saveRockets();}
+  }
+}
+async function sendSectionChat(sectionId){
+  if(!apiKey){showToast('Add API key in Settings','error');return;}
+  const input=document.getElementById('rinput-'+sectionId);
+  const text=input.value.trim();if(!text)return;
+  const btn=document.getElementById('rsend-'+sectionId);
+  input.value='';btn.disabled=true;
+  appendRocketMsg(sectionId,'user',text);
+  const project=rocketProjects.find(p=>p.id===currentRocketId);
+  // Build rocket context from all fields
+  const rocketCtx=buildRocketContext(project);
+  const section=SECTIONS.find(s=>s.id===sectionId);
+  const sectionHistory=project.chats[sectionId].slice(-10).map(m=>({role:m.role,content:m.content}));
+  // Add current user message
+  sectionHistory.push({role:'user',content:text});
+  const systemPrompt=`You are Azriel, a rocketry design AI built by Jay Bravo. You are helping with the "${section.label}" section of a rocket project.
+You have full context of the entire rocket design to help make informed recommendations.
+When you can determine a value for a form field, mention it clearly so Jay can fill it in.
+Be direct, technical, and safety-conscious. If you recommend a specific value, state it clearly.
+
+Full rocket design context:
+${rocketCtx}`;
+  try{
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,system:systemPrompt,messages:sectionHistory})
+    });
+    if(!response.ok){const err=await response.json();throw new Error(err.error?.message);}
+    const data=await response.json();
+    let reply='';for(const b of data.content){if(b.type==='text')reply+=b.text;}
+    appendRocketMsg(sectionId,'ai',reply);
+  }catch(err){appendRocketMsg(sectionId,'ai','Error: '+err.message);}
+  btn.disabled=false;
+}
+function buildRocketContext(project){
+  if(!project)return'No data yet.';
+  const f=project.fields;
+  return`Project: ${project.name}
+BODY: Length=${f.length||'?'}" | Diameter=${f.diameter||'?'}" | Wall=${f.wall||'?'}" | Material=${f.material||'?'} | Nose=${f.nose||'?'} (${f.nose_material||'?'})
+MOTOR: Class=${f.class||'?'} | Designation=${f.designation||'?'} | Mfr=${f.manufacturer||'?'} | Burn=${f.burn_time||'?'}s | Thrust=${f.thrust||'?'}N | Delay=${f.delay||'?'}s
+FINS: Qty=${f.quantity||'?'} | Shape=${f.shape||'?'} | Material=${f.material||'?'} | Span=${f.span||'?'}" | Root=${f.root||'?'}" | Tip=${f.tip||'?'}" | Attach=${f.attach||'?'}
+RECOVERY: Type=${f.type||'?'} | Chute=${f.chute_diameter||'?'}" ${f.chute_material||'?'} | Shrouds=${f.shroud_lines||'?'}x${f.shroud_length||'?'}" | Shock=${f.shock_cord||'?'} ${f.shock_length||'?'}" | Wadding=${f.wadding||'?'}
+LAUNCH: Rod=${f.rod_size||'?'} x ${f.rod_length||'?'}ft | Igniter=${f.igniter||'?'} | Site=${f.launch_site||'?'} | Notes=${f.notes||'none'}`;
+}
+async function generateBuildSheet(){
+  const project=rocketProjects.find(p=>p.id===currentRocketId);
+  if(!project){showToast('No project open','error');return;}
+  if(!apiKey){showToast('Add API key in Settings','error');return;}
+  showToast('Generating build sheet...','');
+  const rocketCtx=buildRocketContext(project);
+  try{
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3000,
+        system:`You are Azriel, a rocketry AI. Generate a complete, printable build sheet for a model rocket. Format it cleanly for plain text printing. Include exact quantities, measurements, and where to buy each item. Write simply enough that a beginner can follow it step by step without asking questions.`,
+        messages:[{role:'user',content:`Generate a complete build sheet for this rocket:\n\n${rocketCtx}\n\nInclude:\n1. COMPLETE PARTS LIST with exact quantities, measurements, and suggested sources (Estes, hobby shops, Amazon, etc.)\n2. STEP BY STEP ASSEMBLY INSTRUCTIONS numbered and detailed\n3. PRE-LAUNCH SAFETY CHECKLIST\n\nMake it printable — someone should be able to buy every part and build this rocket using only this document.`}]})
+    });
+    if(!response.ok){const err=await response.json();throw new Error(err.error?.message);}
+    const data=await response.json();
+    let sheet='';for(const b of data.content){if(b.type==='text')sheet+=b.text;}
+    const header=`AZRIEL BUILD SHEET — ${project.name.toUpperCase()}\nGenerated: ${new Date().toLocaleDateString()}\nCreated by Jay Bravo using Azriel AI\n${'='.repeat(50)}\n\n`;
+    const blob=new Blob([header+sheet],{type:'text/plain'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=project.name.replace(/\s+/g,'_')+'_build_sheet.txt';a.click();
+    showToast('Build sheet downloaded!','success');
+  }catch(err){showToast('Error: '+err.message,'error');}
+}
+function renameRocketProject(){
+  const project=rocketProjects.find(p=>p.id===currentRocketId);if(!project)return;
+  const name=prompt('New name:',project.name);if(!name)return;
+  project.name=name;saveRockets();renderRocketList();
+  document.getElementById('rocketProjectTitle').textContent='🚀 '+name;
+}
+
+function showToast(msg,type=''){
+  const el=document.getElementById('toast');el.textContent=msg;
+  el.className='toast show'+(type?' '+type:'');
+  setTimeout(()=>el.className='toast',3000);
+}
+updateEditorPlaceholder();
+</script>
+</body>
+</html>
